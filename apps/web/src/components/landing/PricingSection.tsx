@@ -20,7 +20,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'What happens if a website updates its layout or buttons?',
-    a: 'Pages do change, and no tool can promise otherwise. What ReFlow gives you is the ability to fix it quickly: every recorded step stays editable on the workflow canvas, so you correct the one step that broke and run again instead of recording the whole task from scratch.',
+    a: 'ReFlow records a ranked set of selectors plus a fingerprint of the element (tag, role, aria label, visible text). At replay it scores candidates against that fingerprint and accepts a match above a confidence threshold, so small markup changes usually still resolve. Large redesigns can still break a step — every recorded step stays editable on the canvas, so you fix the one that broke instead of re-recording the whole task.',
   },
   {
     q: 'What counts as an automated step?',
@@ -223,7 +223,7 @@ export default function PricingSection({ onSelectTier }: PricingSectionProps = {
                   <span className="w-4 h-4 rounded-full bg-white text-zinc-950 flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-bold">
                     <Check className="w-3 h-3 stroke-[3]" />
                   </span>
-                  <span>Every recorded step stays editable on the canvas</span>
+                  <span>Confidence-scored selector fallback when a page shifts</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <span className="w-4 h-4 rounded-full bg-white text-zinc-950 flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-bold">

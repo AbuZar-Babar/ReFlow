@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     default: "ReFlow — Autonomous Browser Automation & RPA Platform",
     template: "%s | ReFlow",
   },
-  description: "Record a repetitive browser task once in Chrome and replay it whenever the work comes back. ReFlow reads the table or cards on the page and produces a spreadsheet — including portals that have no download button.",
+  description: "Record a repetitive browser task once in Chrome and replay it whenever the work comes back. ReFlow reads the table or cards on the page and produces a spreadsheet — and when a selector breaks, it falls back to a confidence-scored match against the recorded element.",
   keywords: [
     "browser automation",
     "RPA",
