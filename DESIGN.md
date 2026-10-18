@@ -34,6 +34,39 @@ Dial: ENERGY 1 / RHYTHM 2 / MOTION 2
 
 ---
 
+## Dashboard Theme Palettes
+
+The landing page uses the fixed obsidian tokens above. The app shell (dashboard
+and workflow editor) is themeable at runtime: `applyThemeToDOM()` sets
+`data-theme` and `data-mode` on `<html>`, and every surface reads CSS custom
+properties rather than literal colours.
+
+The model is **neutral chrome, coloured accent** — the Notion/Obsidian approach:
+
+- One shared graphite ladder backs `--color-slate/zinc/gray/neutral-*`, so no
+  card, modal or editor panel carries a hue of its own.
+- Each palette only changes `--primary-color` and `--accent-color` (plus a
+  near-neutral canvas tint of a few points).
+- `--color-cyan/blue/indigo/sky-*` are mapped onto those accents, so legacy
+  accent utilities follow the palette automatically.
+
+| Palette id | Name | Accent |
+|---|---|---|
+| `reflow-cyber` | ReFlow | `#4fc4d4` |
+| `charcoal-indigo` | Charcoal | `#8b9cf0` |
+| `emerald-matrix` | Emerald | `#4fbf8f` |
+| `slate-dark` | Slate | `#6aa9e0` |
+| `crimson-rose` | Crimson | `#d97b86` |
+| `forest` | Forest | `#6fbf9a` |
+
+Rules for new UI: use tokens (`var(--surface-bg)`, `var(--border-color)`,
+`var(--text-muted)`, `var(--primary-color)`) instead of literal hex values, and
+never introduce a hue that is not the palette accent. Semantic status colours
+(`emerald` success, `rose` danger, `amber` warning) are muted and reserved for
+real state.
+
+---
+
 ## Typography Hierarchy
 
 1. **Section Kickers / Index Numbers:**
