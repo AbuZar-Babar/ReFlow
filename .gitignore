@@ -50,3 +50,6 @@ data/
 Run/
 **/Run/
 
+# Knowledge graph (rebuild with: graphify update .)
+graphify-out/
+
