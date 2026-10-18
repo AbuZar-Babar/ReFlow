@@ -279,7 +279,6 @@ export default function WorkflowsPage() {
         items_discovered: 0,
         items_processed: 0,
         items_downloaded: 0,
-        started_at: wf.created_at,
       });
     }
   };

@@ -225,6 +225,7 @@ export function RunDetailsDrawer({ isOpen, onClose, run, onStopRun }: RunDetails
 
   const isActive = run.status === 'pending' || run.status === 'running' || run.status === 'requires_action';
   const isFailed = run.status === 'failed';
+  const hasRun = Boolean(run.id);
   return (
     <div
       role="dialog"
@@ -253,18 +254,24 @@ export function RunDetailsDrawer({ isOpen, onClose, run, onStopRun }: RunDetails
                   <StatusBadge status={run.status} countdownSeconds={twoFactorCountdown} />
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                  <span>Run ID</span>
-                  <code className="max-w-[min(55vw,360px)] truncate rounded-md border border-slate-800 bg-slate-900 px-2 py-1 font-mono text-slate-300">
-                    {run.id}
-                  </code>
-                  <button
-                    onClick={handleCopyRunId}
-                    title="Copy Run ID"
-                    aria-label="Copy run ID"
-                    className="rounded-md p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"
-                  >
-                    {copiedId ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
-                  </button>
+                  {hasRun ? (
+                    <>
+                      <span>Run ID</span>
+                      <code className="max-w-[min(55vw,360px)] truncate rounded-md border border-slate-800 bg-slate-900 px-2 py-1 font-mono text-slate-300">
+                        {run.id}
+                      </code>
+                      <button
+                        onClick={handleCopyRunId}
+                        title="Copy Run ID"
+                        aria-label="Copy run ID"
+                        className="rounded-md p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"
+                      >
+                        {copiedId ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                      </button>
+                    </>
+                  ) : (
+                    <span>No runs recorded yet — details appear here after the first execution.</span>
+                  )}
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-2">
@@ -304,6 +311,7 @@ export function RunDetailsDrawer({ isOpen, onClose, run, onStopRun }: RunDetails
             </div>
           </header>
 
+          {hasRun && (
           <nav aria-label="Execution detail sections" className="run-details-scrollbar flex gap-1 overflow-x-auto border-b border-slate-800/80 bg-[#0d131e] px-5 sm:px-7">
             {([
               { id: 'overview', label: 'Overview' },
@@ -325,8 +333,19 @@ export function RunDetailsDrawer({ isOpen, onClose, run, onStopRun }: RunDetails
               </button>
             ))}
           </nav>
+          )}
 
           <main className="run-details-scrollbar flex-1 space-y-5 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
+            {!hasRun ? (
+              <section className="rounded-xl border border-dashed border-slate-800 bg-slate-900/25 px-4 py-12 text-center">
+                <Clock className="mx-auto h-8 w-8 text-slate-600" />
+                <p className="mt-3 text-sm font-medium text-slate-300">No runs yet</p>
+                <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-slate-500">
+                  This workflow has no recorded executions. Start a run from the workflow card — execution details will appear here.
+                </p>
+              </section>
+            ) : (
+              <>
             {run.status === 'requires_action' && (
               <section className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] p-4 sm:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -609,6 +628,8 @@ export function RunDetailsDrawer({ isOpen, onClose, run, onStopRun }: RunDetails
                   )}
                 </div>
               </section>
+            )}
+              </>
             )}
           </main>
 
