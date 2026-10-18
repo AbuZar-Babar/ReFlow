@@ -43,15 +43,18 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   // Full-bleed studio canvas view: bypass dashboard sidebar/header and overflow wrappers
   if (isWorkflowEditor) {
     return (
-      <div className="fixed inset-0 h-screen w-screen overflow-hidden bg-[#060913] text-slate-100">
-        {children}
-        <RunDetailsDrawer
-          isOpen={isDrawerOpen}
-          onClose={closeRunDetails}
-          run={selectedRun}
-          onStopRun={stopActiveRun}
-        />
-      </div>
+      <TourProvider>
+        <div className="fixed inset-0 h-screen w-screen overflow-hidden bg-[#060913] text-slate-100">
+          {children}
+          <RunDetailsDrawer
+            isOpen={isDrawerOpen}
+            onClose={closeRunDetails}
+            run={selectedRun}
+            onStopRun={stopActiveRun}
+          />
+        </div>
+        <TourOverlay />
+      </TourProvider>
     );
   }
 

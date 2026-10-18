@@ -140,6 +140,61 @@ export const TOURS: Record<string, Tour> = {
     ]
   },
 
+  canvas: {
+    id: 'canvas',
+    name: 'Workflow canvas',
+    steps: [
+      {
+        title: 'The workflow canvas',
+        body: 'This is where a recorded task becomes something you can read and change. Every box on the canvas is one browser action, and the lines between them are the order.',
+        hint: 'This is also where you repair a recording that did the wrong thing, without recording again.',
+        placement: 'center'
+      },
+      {
+        target: 'canvas-header',
+        title: 'Name and save state',
+        body: 'The title at the top is editable — rename it to something you will recognise in a list. A small amber dot appears while you have changes that are not saved yet.',
+        placement: 'bottom'
+      },
+      {
+        target: 'canvas-save',
+        title: 'Save',
+        body: 'Writes your edits back to the cloud. If you run without saving, you are testing the previous version of the workflow, not the one on screen.',
+        placement: 'bottom'
+      },
+      {
+        target: 'canvas-steps',
+        title: 'The step list',
+        body: 'Every step in order, numbered. Click one to open its settings on the right. In a long workflow this is much faster than hunting for the box on the canvas.',
+        placement: 'right'
+      },
+      {
+        target: 'canvas-add-step',
+        title: 'Add a step',
+        body: 'Click, type, select, navigate, wait, or extract. A new step is appended at the end — you then connect it into the flow on the canvas.',
+        placement: 'right'
+      },
+      {
+        target: 'canvas-stage',
+        title: 'Steps and order',
+        body: 'Each box is one action; the line from the bottom of a box to the top of the next is what makes it happen in that order. Drag a box to move it, drag from one dot to another to connect, and use the zoom controls at the top right.',
+        hint: 'Selecting a box slides its settings in from the right — that is where selectors and values live.',
+        placement: 'bottom'
+      },
+      {
+        target: 'canvas-run',
+        title: 'Run workflow',
+        body: 'Saves and executes straight away, so you can watch your edit work. Afterwards, open the run in Run history to see what each step did.',
+        placement: 'bottom'
+      },
+      {
+        title: 'That is the canvas',
+        body: 'Steps in order on the canvas, settings on the right, run from the header. Nothing here is permanent — you can always change a step and run again.',
+        placement: 'center'
+      }
+    ]
+  },
+
   artifacts: {
     id: 'artifacts',
     name: 'Files & results',
@@ -170,6 +225,8 @@ export const TOURS: Record<string, Tour> = {
 export function tourForPath(pathname: string | null | undefined): string | null {
   if (!pathname) return null;
   if (pathname === '/dashboard' || pathname === '/dashboard/') return 'dashboard';
+  // The editor is a full-bleed route, so it must be matched before the list page.
+  if (pathname.startsWith('/dashboard/workflows/') && pathname.includes('/edit')) return 'canvas';
   if (pathname.startsWith('/dashboard/workflows')) return 'workflows';
   if (pathname.startsWith('/dashboard/runners')) return 'runners';
   if (pathname.startsWith('/dashboard/artifacts')) return 'artifacts';
