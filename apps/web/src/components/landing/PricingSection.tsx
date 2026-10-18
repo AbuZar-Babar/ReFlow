@@ -190,7 +190,7 @@ export default function PricingSection({ onSelectTier }: PricingSectionProps = {
                 </span>
               </div>
               <p className="text-xs text-zinc-300 mb-6 leading-relaxed">
-                For teams requiring multi-iframe ERP traversal, selector self-healing, and recurring unattended execution.
+                For teams running several workflows a week across more than one portal.
               </p>
               <div className="mb-6 flex items-baseline gap-1">
                 <span className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight font-mono">{proPrice}</span>
