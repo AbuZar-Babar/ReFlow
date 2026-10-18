@@ -580,6 +580,12 @@ export default function RunsTelemetryPage() {
               <Play className="h-4 w-4 fill-slate-950" />
               <span>Go to Workflows</span>
             </Link>
+            <Link
+              href="/dashboard/getting-started"
+              className="mt-3 text-xs font-medium text-slate-400 transition-colors hover:text-cyan-300"
+            >
+              First time here? Read the getting-started guide
+            </Link>
           </div>
         ) : filteredRuns.length === 0 ? (
           /* Empty State: 0 Search / Filter Results */

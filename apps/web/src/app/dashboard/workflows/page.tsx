@@ -538,6 +538,16 @@ export default function WorkflowsPage() {
                 <Plus className="h-4 w-4 stroke-[2.5]" />
                 <span>Record your first workflow</span>
               </button>
+              <p className="text-xs text-slate-500">
+                New to ReFlow?{' '}
+                <Link
+                  href="/dashboard/getting-started"
+                  className="font-medium text-cyan-300 hover:underline"
+                >
+                  Follow the getting-started guide
+                </Link>
+                .
+              </p>
             </>
           ) : (
             <>

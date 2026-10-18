@@ -1123,12 +1123,19 @@ export default function ArtifactsVaultPage() {
               CSVs, spreadsheets, and payloads are cryptographically hashed and vaulted here with
               SHA-256 verification.
             </p>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center justify-center gap-3">
               <Link
                 href="/dashboard/workflows"
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-cyan-500 text-slate-950 hover:bg-cyan-400 transition-all shadow-[0_0_15px_rgba(0,240,255,0.3)]"
               >
                 <span>Browse Workflows</span>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+              <Link
+                href="/dashboard/getting-started"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 border border-white/10 hover:bg-white/5 transition-all"
+              >
+                <span>Getting started guide</span>
                 <ChevronRight className="h-3.5 w-3.5" />
               </Link>
             </div>
