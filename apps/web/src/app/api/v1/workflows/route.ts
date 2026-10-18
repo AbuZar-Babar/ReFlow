@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRunnerOrUser } from '@/lib/auth/runner-auth';
 import { WorkflowDefinition } from '@/lib/types/database';
+import { normalizeLoopFlags } from '@/lib/workflows/loop-signals';
 
 export async function GET(request: NextRequest) {
   const auth = await authenticateRunnerOrUser(request);
@@ -77,8 +78,10 @@ export async function POST(request: NextRequest) {
         ? { ...workflow_definition }
         : {};
 
-    // Incorporate hybrid storage preferences into workflow_definition
-    const finalDefinition: WorkflowDefinition = {
+    // Incorporate hybrid storage preferences into workflow_definition, then
+    // normalize loop intent (recorder writes it under metadata, the visual
+    // editor at the top level) so every reader sees the same answer.
+    const finalDefinition: WorkflowDefinition = normalizeLoopFlags({
       ...baseDefinition,
       upload_to_cloud:
         upload_to_cloud !== undefined
@@ -88,7 +91,7 @@ export async function POST(request: NextRequest) {
         target_folder !== undefined
           ? String(target_folder)
           : String(baseDefinition.target_folder ?? ''),
-    };
+    }) as WorkflowDefinition;
 
     const { data: newWorkflow, error } = await supabase
       .from('wf_workflows')
@@ -188,6 +191,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (definitionModified) {
+      updatedDefinition = normalizeLoopFlags(updatedDefinition) as WorkflowDefinition;
       updatePayload.workflow_definition = updatedDefinition;
     }
 

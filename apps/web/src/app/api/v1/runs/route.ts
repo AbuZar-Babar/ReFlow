@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRunnerOrUser } from '@/lib/auth/runner-auth';
 import { RunStatus } from '@/lib/types/database';
+import { deriveLoopSignals } from '@/lib/workflows/loop-signals';
 
 const ALLOWED_TRANSITIONS: Record<RunStatus, RunStatus[]> = {
   pending: ['running', 'cancelled'],
@@ -124,12 +125,14 @@ export async function POST(request: NextRequest) {
     const steps = Array.isArray(currentDef.steps) && currentDef.steps.length > 0
       ? currentDef.steps
       : (Array.isArray(currentDef.actions) ? currentDef.actions : []);
-    const hasLoopStep = steps.some((s: any) => s && (s.role === 'LOOP' || s.isLoop || s.loopMode === 'sequential_iteration'));
-    const detectedLoopIndex = steps.findIndex((s: any) => s && (s.role === 'LOOP' || s.isLoop || s.loopMode === 'sequential_iteration'));
+    // Single source of truth for loop intent: recorder metadata, visual-editor
+    // compile, per-step flags and extraction steps. Keeps the persisted run
+    // config in sync with what the engine will actually execute.
+    const loopSignals = deriveLoopSignals(currentDef, steps);
 
     // Determine loop execution mode
     const hasExplicitMode = body.mode !== undefined || body.isLoop !== undefined;
-    const isLoopCandidate = Boolean(currentDef.isLoop || currentDef.mode === 'loop' || hasLoopStep);
+    const isLoopCandidate = loopSignals.isLoop;
     const mode = hasExplicitMode
       ? (body.mode || (body.isLoop ? 'loop' : 'single'))
       : (isLoopCandidate ? 'loop' : 'single');
@@ -142,9 +145,7 @@ export async function POST(request: NextRequest) {
     const explicitLoopStepIndex = body.loopStepIndex !== undefined ? body.loopStepIndex : body.loop_step_index;
     const loopStepIndex = hasExplicitLoopStepIndex
       ? (explicitLoopStepIndex !== null ? Number(explicitLoopStepIndex) : null)
-      : (currentDef.loopStepIndex !== undefined && currentDef.loopStepIndex !== null
-          ? Number(currentDef.loopStepIndex)
-          : (isLoop && detectedLoopIndex >= 0 ? detectedLoopIndex : null));
+      : loopSignals.loopStepIndex;
 
     // Determine loop limit
     const hasExplicitLoopLimit = body.loopLimit !== undefined || body.loop_limit !== undefined;
