@@ -1,10 +1,11 @@
 # ReFlow — Prototype & Demo TODO
 
-Updated: 2026-10-18 · Demo target: Mon 2026-10-19
+Updated: 2026-10-19 · Demo target: Mon 2026-10-19
 
-Working rules: one branch per task; completed work merges into `main-refactor`
-(the test copy). `main` stays untouched until explicit approval. Nothing counts
-as done until it ran end-to-end or a test proves it.
+Working rules: one branch per task. Completed work merges into `main`, which is
+the deployed trunk (Vercel auto-deploys `main` → `web-fawn-ten-55`). Pushes to
+`main` require explicit approval each time. Nothing counts as done until it ran
+end-to-end or a test proves it.
 
 ## Demo story (client test)
 
@@ -57,26 +58,40 @@ with a lowercase `'loop'` check — so recorded table scrapes pre-filled as
       into the spreadsheet (no downloads involved).
 - [ ] Fix whatever the dry run breaks (inside this branch).
 
+## Done — 2026-10-19 (pushed to `main`, live on Vercel)
+
+- [x] **M-17** `refreshDashboard` clears `isRefreshing` in a `finally` block.
+- [x] **M-18** `StatusBadge` no longer invents a countdown.
+- [x] **M-19** No-run drawer shows an honest empty state instead of dead controls.
+- [x] **M-20** Runners page awaits `stopActiveRun` and surfaces failure.
+- [x] **First-run guidance** — `SetupChecklist` on Home, `getting-started` page,
+      and guide links from the three empty states.
+- [x] **Guided tour engine** — five tours (dashboard, workflows, canvas, runners,
+      artifacts) with `data-tour` anchors, spotlight overlay, keyboard control,
+      and a `?` launcher in the header. Canvas tour covers the visual editor.
+- [x] **Theme consistency** — neutral-first palette layer replaces the per-theme
+      `!important` class patches; six softened palettes.
+- [x] **Landing page** — dead macOS download removed, mobile scroll-story fixed,
+      claims aligned with the product, honest audience band added.
+- [x] **Deployed** — `main` pushed and verified on `web-fawn-ten-55.vercel.app`.
+
 ## Demo polish (P2)
 
-- [ ] M-17 `refreshDashboard` never clears `isRefreshing` → refresh button
-      spins forever (`DashboardContext.tsx:396-399`, `Header.tsx:61-66`).
-- [ ] M-18 `StatusBadge` fake countdown in list usages
-      (`StatusBadge.tsx:21-31`).
-- [ ] M-19 workflows page opens `RunDetailsDrawer` with `id:''` when a
-      workflow has no runs (`workflows/page.tsx:271-284`).
-- [ ] M-20 runners page ignores `stopActiveRun` result → stop can fail
-      silently (`runners/page.tsx:842-848`).
-- [ ] First-run guidance for the client (guided checklist / coach marks).
+- [ ] Visually verify the five tours in a browser (spotlight geometry, card
+      placement on the editor canvas). Only source assertions and build output
+      have been checked so far.
+- [ ] Bring light mode onto the neutral surface ladder (dark mode is done).
 - [ ] Final UI pass on the demo path: create → record → run → download.
 
 ## Delivery (P3)
 
 - [ ] Vercel env check: `DESKTOP_*_DOWNLOAD_URL` + prod Supabase ref.
-- [ ] Decide on a desktop installer rebuild before Monday — gates `C-05`,
-      `C-03`, `H-10` fixes and anything engine-side (recorder/replay).
-- [ ] One-page client test guide (install → record → run → download).
-- [ ] Final clean smoke, then merge everything to `main-refactor`.
+- [x] Decide on a desktop installer rebuild before Monday — **not happening**;
+      Windows-only `.exe`, no `.dmg`, and the landing page now says so.
+- [ ] One-page client test guide (install → record → run → download). The
+      in-app `/dashboard/getting-started` page covers this, but there is no
+      printable/handout version.
+- [ ] Final clean smoke, then confirm `main` is the deployment of record.
 
 ## Parked — post-Monday roadmap
 

@@ -68,8 +68,43 @@ Per-workspace commands:
 - **Build**: `npm run build --prefix apps/web`.
 - **End-to-end**: the desktop worker has been paired against a deployed cloud control plane using a canonical `rf_live_` runner token.
 
+## Demo Readiness Work (2026-10-19)
+
+Delivered for the Monday client test and pushed to `origin/main` (`b850c30..6aecd44`), verified live on `https://web-fawn-ten-55.vercel.app`.
+
+### First-run onboarding
+- `apps/web/src/components/dashboard/SetupChecklist.tsx` — four-step progress panel on Home. Every checkmark is derived from real state (`downloadClicked || isRunnerOnline`, `isRunnerOnline`, `workflowCount > 0`, `completedRunCount > 0`); it self-hides when all four complete, is dismissible per workspace, and stays hidden until dashboard data has loaded.
+- `apps/web/src/app/dashboard/getting-started/page.tsx` — written walkthrough (install → connect → record → run → find files), a "Changing a workflow on the canvas" section, and troubleshooting for the five common failures.
+- Empty states on Workflows, Run history, and Files & results link to the guide instead of dead-ending.
+
+### Guided tour engine
+- `apps/web/src/components/tour/` — `TourProvider` (state, Esc/←/→, completion in `wf_tour_done_<id>`), `TourOverlay` (four dim panels around the target, accent ring, collision-flipping card, focus trap, `role="dialog"`, reduced-motion aware), `tourSteps.ts` (content as data), `TakeTourButton`, `TourAutoStart`.
+- Five tours: `dashboard` (9 steps), `workflows` (4), `canvas` (8), `runners` (3), `artifacts` (3).
+- Steps resolve anchors by `data-tour="…"` attributes, never by CSS class. A test cross-checks every declared target against the DOM attributes in `src/`, so a renamed anchor fails the suite instead of silently falling back.
+- Auto-starts once on first visit to `/dashboard` only; replayable from the `?` button in the header (which picks the tour for the current route) and from the guide page.
+- The editor route is full-bleed and bypasses `DashboardShell`, so `TourProvider`/`TourOverlay` are mounted separately in the `isWorkflowEditor` branch of `dashboard/layout.tsx`.
+
+### Theme consistency
+- Root cause: `globals.css` patched individual utility classes per theme with `!important`, so any class the list missed kept its original hue, and surfaces themselves were hue-tinted (emerald `--surface-bg: #0c1f14` next to `bg-slate-900` `#0f172b`).
+- Fix: a "Soft Theme Layer" that redefines the Tailwind palette variables (`--color-slate-*`, `--color-zinc-*`, `--color-gray-*`, `--color-neutral-*`) as one shared graphite ladder, and maps `--color-cyan/blue/indigo/sky-*` to `var(--primary-color)` / `var(--accent-color)` via `color-mix`. Utilities compile to `background-color: var(--color-slate-900)`, so this rethemes every call site without editing ~2,878 hardcoded class usages.
+- All six palettes re-tuned to near-neutral surfaces with softer accents; the 214-line per-theme `!important` block was deleted.
+- Known gap: light mode still uses the older tinted canvases because the per-theme light blocks out-specify the new neutral one.
+
+### Landing page
+- Removed the macOS download row: it advertised `ReFlow-Worker-1.0.0.dmg` but `/api/v1/runners/download?os=mac` has no asset and 302s to the GitHub release page.
+- Fixed the mobile scroll-story section, where the sticky card (~575px) covered the step copy in an 844px viewport; the card is now `lg:sticky` only.
+- Aligned copy with the product: dropped the cron-scheduling promise (no scheduler exists), "concurrent runner workers", "multi-iframe ERP traversal", "100% local privacy" (artifacts sync to Supabase Storage), and "24x faster". The selector-fallback claim was **kept**, because `packages/engine/src/shared/selector-resolver.js` implements weighted confidence scoring with a 0.70 threshold.
+- Added an honest "who this is for" band; did not wire `SocialProofStrip` because it contains fabricated testimonials.
+- Page height 8,123 → 7,485px desktop, 10,479 → 9,762px mobile. Fixed `zinc-600` microcopy contrast and the H1→H3 heading skip.
+
+### Verification status
+`apps/web` suite: 144 tests, 143 pass, 1 fail — `F-04.3` remains the only red (pre-existing; asserts a literal `rf_live_` in `runners/page.tsx`). `npm run build` exits 0. The tour overlay has **not** been visually verified in a browser; only its source-level assertions and build output have been checked.
+
 ## Next Actions
 1. Maintain documentation integrity as features evolve.
 2. Consider adding optional local command authentication token on loopback bridge port `49152` (F-03 future hardening).
 3. Remove or wire up the orphaned landing components listed above.
 4. Expand workflow template library in `apps/web` with new pre-built RPA recipes.
+5. Visually verify the guided tours in a browser (spotlight geometry, card placement on the editor's full-bleed canvas) — still unverified.
+6. Resolve `F-04.3` in `test/security-tenant-auth.challenge.mjs`, the only remaining red in the web suite.
+7. Bring light mode onto the neutral surface ladder so it matches dark mode.
