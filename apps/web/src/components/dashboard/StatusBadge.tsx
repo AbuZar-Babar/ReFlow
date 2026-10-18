@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { 
   Clock, 
   Loader2, 
@@ -18,20 +18,6 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status, countdownSeconds, className = '' }: StatusBadgeProps) {
-  const [internalCountdown, setInternalCountdown] = useState<number>(90);
-
-  useEffect(() => {
-    if (status !== 'requires_action' || countdownSeconds !== undefined) return;
-
-    const timer = setInterval(() => {
-      setInternalCountdown((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [status, countdownSeconds]);
-
-  const displayCountdown = countdownSeconds !== undefined ? countdownSeconds : internalCountdown;
-
   switch (status) {
     case 'pending':
       return (
@@ -59,7 +45,7 @@ export function StatusBadge({ status, countdownSeconds, className = '' }: Status
           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse ${className}`}
         >
           <ShieldAlert className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-          <span>Action Required (2FA) • {displayCountdown}s</span>
+          <span>Action Required (2FA){countdownSeconds !== undefined ? ` • ${countdownSeconds}s` : ''}</span>
         </span>
       );
 
