@@ -72,11 +72,11 @@ Modular CDP automation library:
 ## Security and Data Boundaries Preserved
 - Service-role Supabase access is treated as privileged; tenant membership is validated in application routes.
 - Organization IDs and UUID prefixes are never treated as bearer credentials.
-- All workflows, execution runs, artifacts, and secrets are strictly scoped to the authenticated tenant.
+- All workflows, execution runs, and artifacts are strictly scoped to the authenticated tenant.
 - Billing identifiers are completely decoupled from runner telemetry.
 
-## Verified Test Suites Across Monorepo
-- **`apps/web`**: 90 / 90 tests passing (`npm test --prefix apps/web`)
-- **`apps/web` Build**: `npm run build --prefix apps/web` passes with code 0
-- **`packages/engine`**: 65 / 65 tests passing (`npm test --prefix packages/engine`)
-- **`apps/desktop`**: 16 / 16 tests passing (`npm test --prefix apps/desktop`)
+## Test Suites Across the Monorepo
+- **`apps/web`**: `npm test --prefix apps/web`
+- **`apps/web` Build**: `npm run build --prefix apps/web`
+- **`packages/engine`**: `npm test --prefix packages/engine`
+- **`apps/desktop`**: `npm test --prefix apps/desktop`

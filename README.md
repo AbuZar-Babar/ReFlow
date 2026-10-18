@@ -4,6 +4,8 @@
 
 ReFlow bridges a modern cloud control plane with a local desktop automation daemon and a Chrome DevTools Protocol (CDP) engine for zero-extension workflow capture, intelligent table/collection discovery, and self-healing replay—without breaking on 2FA challenges, popups, or cloud anti-bot firewalls.
 
+*Built by AbuZar and Alina.*
+
 ---
 
 ## 1. Project Overview & Core Value Proposition
@@ -44,11 +46,13 @@ Workflow-Capture-SaaS/
 * **Execution Preflight Modal**: Pre-run inspection modal (`ExecutionPreflightModal.tsx`) supporting live table column discovery via the desktop bridge, runtime column filters (numeric, date ranges, status), batch limits, and dry-run previews.
 * **Live Telemetry & HITL 2FA Banner**: Real-time run monitoring (`runs/page.tsx`) subscribed to Supabase Realtime (`postgres_changes`), rendering live step logs, artifact links, and the 90-second countdown banner (`TwoFactorBanner.tsx`).
 * **Outputs & Invoices Vault**: Cryptographic artifact repository (`artifacts/page.tsx`) with SHA-256 integrity verification, cloud sync status, and streaming in-browser PKWARE ZIP exports.
-* **Enterprise Security Vault**: AES-256-GCM credential vault (`/api/v1/secrets`) and HMAC-SHA256 signed outgoing webhooks (`/api/v1/webhooks`) with SSRF protection against private IPv4 destinations.
+* **Signed Webhook Test Endpoint**: HMAC-SHA256 signed outgoing test deliveries (`/api/v1/webhooks/test`) with SSRF protection against loopback and private IPv4 destinations.
 
 #### `apps/desktop` (Electron Local Worker & System Tray Bridge)
 * **`chrome-spawner.js`**: Launches or attaches to local Google Chrome on CDP debugging port `9222` with persistent user data directory `~/.chrome-reflow`.
-* **`http-bridge.js`**: Local HTTP server listening on `127.0.0.1:49152` with origin-validated Private Network Access CORS, exposing endpoints for the cloud web dashboard:
+* **`http-bridge.js`**: Local HTTP server listening on `127.0.0.1:49152` with origin-validated Private Network Access CORS, exposing endpoints for the cloud web dashboard (each also served under an `/api/` prefix):
+  * `GET /health`: Bridge liveness and status.
+  * `GET /record/status`: Current recorder state.
   * `POST /record/start`: Attaches recorder bridge to active Chrome tab.
   * `POST /record/stop`: Compiles recorded actions into a structured workflow.
   * `POST /discover`: Live table/grid column inspection using `ItemDiscovery` and `PageInspector`.
@@ -92,7 +96,7 @@ In your Supabase SQL Editor, run the DDL schema file:
 supabase/schema.sql
 ```
 
-This creates the core relational tables (`wf_organizations`, `wf_organization_members`, `wf_workflows`, `wf_execution_runs`, `wf_run_artifacts`, `wf_secrets`) alongside Row-Level Security (RLS) policies.
+This creates the core relational tables (`wf_organizations`, `wf_organization_members`, `wf_workflows`, `wf_execution_runs`, `wf_run_artifacts`) alongside Row-Level Security (RLS) policies.
 
 ---
 
@@ -104,13 +108,9 @@ Create `apps/web/.env.local` using the template below:
 # Supabase Configuration
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+
+# Optional: privileged server-side access. Falls back to the anon key (RLS-enforced) when unset.
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-
-# Secrets Vault Encryption (32-byte hex string for AES-256-GCM)
-VAULT_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
-
-# Optional: Cloud URL
-NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
 ---

@@ -229,6 +229,3 @@ sequenceDiagram
 * Blocks private IPv4 ranges (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`).
 * Disables `x-test-bypass` headers in production environments (`process.env.NODE_ENV === 'production'`).
 
-### 3.4 Cryptographic Secrets Vault (`/api/v1/secrets`)
-* Encrypted at rest using **AES-256-GCM** with 96-bit random initialization vectors (IVs) and 128-bit authentication tags.
-* Master encryption key managed via `VAULT_ENCRYPTION_KEY` environment variable.

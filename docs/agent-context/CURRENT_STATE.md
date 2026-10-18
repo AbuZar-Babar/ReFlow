@@ -14,7 +14,7 @@ ReFlow is a production-ready SaaS platform for hybrid browser automation and RPA
 - Electron desktop worker with Private Network Access (PNA) localhost bridge (`127.0.0.1:49152`).
 - Real-time execution telemetry and 90-second Human-in-the-Loop (HITL) 2FA recovery flow.
 - SHA-256 cryptographic artifact deduplication, categorized disk organization, and optional Supabase Storage sync.
-- Supabase-backed tenant isolation, Row-Level Security (RLS), and AES-256-GCM encrypted credential vaulting.
+- Supabase-backed tenant isolation and Row-Level Security (RLS) policies across all workflow, run, and artifact tables.
 
 ## Audit Findings Status & Remediations
 
@@ -55,17 +55,21 @@ ReFlow is a production-ready SaaS platform for hybrid browser automation and RPA
 
 ## Monorepo Architecture Refactor (Phase 3A Legacy Purge)
 - **Elimination of Legacy Standalone Server in `packages/engine`**: Purged deprecated SQLite database (`db.js`), redundant Express/HTTP dashboard controllers (`/src/dashboard/`), and standalone auth controllers (`/src/auth/`). All web dashboard and SaaS operations now centrally live in Next.js (`apps/web`).
-- **Orphan Component Removal in `apps/web`**: Deleted 6 orphaned landing page components (`FeatureTabSwitcher`, `HeroProductShowcase`, `ProductDemoSimulator`, `RobotMascot`, `ScrollProductShowcase`, `VideoDemoModal`).
+- **Orphaned landing components in `apps/web`**: `FeatureTabSwitcher`, `HeroProductShowcase`, `ProductDemoSimulator`, `RobotMascot`, `ScrollProductShowcase`, and `VideoDemoModal` remain in `apps/web/src/components/landing/` but are not imported by any route; they are dead-code candidates for removal.
 - **Standardized Environment Variables**: Standardized strictly on `REFLOW_CLOUD_URL`, `REFLOW_RUNNER_TOKEN`, and `REFLOW_TARGET_FOLDER` across engine CLI and runner daemon.
 
-## Test and Verification Status (100% Passing Monorepo)
-- **`apps/web`**: 90 passing tests (`node --test test/*.challenge.mjs`), including `security-tenant-auth.challenge.mjs`, `theming-system.challenge.mjs`, `artifacts-vault.challenge.mjs`, and `runs-telemetry.challenge.mjs`.
-- **`apps/web` Build**: `next build` passes cleanly (code 0) with zero TypeScript errors.
-- **`packages/engine`**: 65 passing tests (`node --test test/**/*.test.js`), covering replay engines, table expansion, universal date handling, selector resolution, and HITL 2FA.
-- **`apps/desktop`**: 16 passing tests (`node test/test-http-bridge.js`), verifying bridge lifecycle, origin restrictions, and PNA headers.
-- **End-to-End Live Verification**: Live desktop worker paired with production Vercel cloud plane (`web-fawn-ten-55.vercel.app`) using canonical `rf_live_` token and verified **ONLINE**.
+## Test Suites
+
+Per-workspace commands:
+
+- **`apps/web`**: `npm test --prefix apps/web` — challenge tests (`test/*.challenge.mjs`), including `security-tenant-auth.challenge.mjs`.
+- **`packages/engine`**: `npm test --prefix packages/engine` — replay, table expansion, date handling, selector resolution, and HITL 2FA.
+- **`apps/desktop`**: `npm test --prefix apps/desktop` — bridge lifecycle, origin restrictions, and PNA headers.
+- **Build**: `npm run build --prefix apps/web`.
+- **End-to-end**: the desktop worker has been paired against a deployed cloud control plane using a canonical `rf_live_` runner token.
 
 ## Next Actions
 1. Maintain documentation integrity as features evolve.
 2. Consider adding optional local command authentication token on loopback bridge port `49152` (F-03 future hardening).
-3. Expand workflow template library in `apps/web` with new pre-built RPA recipes.
+3. Remove or wire up the orphaned landing components listed above.
+4. Expand workflow template library in `apps/web` with new pre-built RPA recipes.
