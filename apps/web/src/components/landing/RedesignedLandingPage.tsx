@@ -114,7 +114,7 @@ function ProductWindow() {
         </aside>
 
         <div className="min-w-0 p-4 sm:p-5">
-          <h3 className="text-base font-semibold tracking-tight text-zinc-100 sm:text-lg">Invoice processing</h3>
+          <p className="text-base font-semibold tracking-tight text-zinc-100 sm:text-lg">Invoice processing</p>
           <p className="mb-5 mt-1 text-[10px] text-zinc-500">A reusable sequence for a recurring task</p>
 
           <div className="space-y-2">
@@ -312,7 +312,7 @@ export default function RedesignedLandingPage() {
                 Teach ReFlow once. <span className="text-emerald-200">Let it handle the routine.</span>
               </h1>
               <p className="mt-6 max-w-xl text-base leading-8 text-zinc-400 sm:text-lg">
-                Turn repetitive browser tasks into reusable workflows. Capture the process, configure the steps, and let ReFlow handle the routine while you focus on the work that matters.
+                Some portals have no download button. ReFlow opens the page, reads the table or the cards, and hands you a spreadsheet — the same way, every time the work comes back.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 {currentUser ? (
@@ -328,19 +328,39 @@ export default function RedesignedLandingPage() {
                   See how it works <ArrowDown className="h-4 w-4" />
                 </Link>
               </div>
-              <p className="mt-4 text-xs text-zinc-600">Start with one workflow. Refine it as your process evolves.</p>
+              <p className="mt-4 text-xs text-zinc-400">Start with one workflow. Refine it as your process evolves.</p>
             </div>
             </ScrollReveal>
 
             <ScrollReveal direction="right" className="min-w-0">
             <div>
               <ProductWindow />
-              <div className="mt-3 flex items-center justify-between gap-3 text-[10px] text-zinc-600">
+              <div className="mt-3 flex items-center justify-between gap-3 text-[10px] text-zinc-400">
                 <span>Illustrative product interface</span>
-                <span className="flex items-center gap-2 text-zinc-500"><span className="h-1.5 w-1.5 rounded-full bg-emerald-200" /> Capture · Configure · Run</span>
+                <span className="flex items-center gap-2 text-zinc-400"><span className="h-1.5 w-1.5 rounded-full bg-emerald-200" /> Capture · Configure · Run</span>
               </div>
             </div>
             </ScrollReveal>
+          </div>
+        </section>
+
+        <section aria-label="Who ReFlow is for" className="border-y border-white/[0.06] bg-[#080808]">
+          <div className="mx-auto max-w-7xl px-5 py-10 sm:px-8 sm:py-12 lg:px-12">
+            <p className="text-[11px] font-bold uppercase tracking-[0.17em] text-zinc-500">Built for the work nobody wants to repeat</p>
+            <div className="mt-6 grid gap-6 sm:grid-cols-3 sm:gap-10">
+              <div>
+                <p className="text-sm font-semibold text-zinc-100">Operations teams</p>
+                <p className="mt-1.5 text-sm leading-6 text-zinc-400">The same weekly export, from the same portal, typed out by hand.</p>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-zinc-100">Finance and admin</p>
+                <p className="mt-1.5 text-sm leading-6 text-zinc-400">Invoices and statements that only exist on a screen, never as a file.</p>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-zinc-100">Anyone on a portal with no download button</p>
+                <p className="mt-1.5 text-sm leading-6 text-zinc-400">ReFlow reads the table or the cards and builds the spreadsheet for you.</p>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -377,7 +397,7 @@ export default function RedesignedLandingPage() {
             </div>
 
             <div className="mt-12 grid items-start gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
-              <div className="sticky top-24 z-10 flex min-h-[min(72vh,680px)] items-center lg:top-28">
+              <div className="flex items-center lg:sticky lg:top-28 lg:z-10 lg:min-h-[min(64vh,600px)]">
                 <article
                   key={activeStory}
                   className="story-card-enter w-full overflow-hidden rounded-2xl border border-white/[0.12] bg-[#0b0b0b] shadow-[0_28px_90px_rgba(0,0,0,0.55)]"
@@ -436,7 +456,7 @@ export default function RedesignedLandingPage() {
 
               <div className="relative">
                 {STORY_ITEMS.map((item, index) => (
-                  <div key={item.title} data-story-trigger={index} className="flex min-h-[72vh] items-center py-12 lg:min-h-[82vh]">
+                  <div key={item.title} data-story-trigger={index} className="flex items-center py-6 lg:min-h-[58vh] lg:py-12">
                     <div className={'w-full border-l pl-6 transition-[border-color,opacity,transform] duration-500 sm:pl-8 ' + (activeStory === index ? 'border-emerald-200/70 opacity-100 translate-x-0' : 'border-white/[0.12] opacity-55 translate-x-1')}>
                       <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-200/80">0{index + 1} / 04</p>
                       <h3 className="max-w-md text-2xl font-semibold leading-tight tracking-[-0.04em] text-white sm:text-4xl">{item.title}</h3>
@@ -493,13 +513,13 @@ export default function RedesignedLandingPage() {
                   <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-zinc-100">Windows</span><span className="mt-1 block text-xs text-zinc-500">Windows installer (.exe)</span></span>
                   <ArrowUpRight className="h-4 w-4 text-zinc-500 transition group-hover:text-emerald-200" />
                 </a>
-                <a href="/api/v1/runners/download?type=installer&os=mac" download="ReFlow-Worker-1.0.0.dmg" className="group flex items-center gap-4 rounded-xl border border-white/[0.09] bg-[#080808] p-4 transition hover:border-emerald-200/30 hover:bg-white/[0.025]">
-                  <span className="grid h-10 w-10 place-items-center rounded-lg bg-white/[0.04] text-zinc-200"><Download className="h-5 w-5" /></span>
-                  <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-zinc-100">macOS</span><span className="mt-1 block text-xs text-zinc-500">macOS package (.dmg)</span></span>
-                  <ArrowUpRight className="h-4 w-4 text-zinc-500 transition group-hover:text-emerald-200" />
-                </a>
+                <div aria-disabled="true" className="flex items-center gap-4 rounded-xl border border-white/[0.06] bg-[#060606] p-4 opacity-70">
+                  <span className="grid h-10 w-10 place-items-center rounded-lg bg-white/[0.03] text-zinc-500"><Download className="h-5 w-5" /></span>
+                  <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-zinc-300">macOS</span><span className="mt-1 block text-xs text-zinc-500">Not available yet — Windows only for now</span></span>
+                  <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Soon</span>
+                </div>
               </div>
-              <p className="mt-4 text-[10px] leading-5 text-zinc-600">Installer availability depends on the current release configuration.</p>
+              <p className="mt-4 text-[10px] leading-5 text-zinc-500">The Windows installer is the only supported package in this release.</p>
             </div>
           </div>
         </section>

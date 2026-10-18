@@ -91,7 +91,7 @@ export default function TermsOfServicePage() {
           <section>
             <h3 className="text-base font-bold text-white mb-2">5. Disclaimer of Warranties</h3>
             <p className="text-zinc-400">
-              ReFlow is provided on an &ldquo;as is&rdquo; and &ldquo;as available&rdquo; basis. While our self-healing selector technology adapts to DOM changes, we cannot guarantee uninterrupted or error-free execution on third-party web portals that radically alter authentication flows or introduce anti-bot countermeasures.
+              ReFlow is provided on an &ldquo;as is&rdquo; and &ldquo;as available&rdquo; basis. Recorded workflows replay the steps as they were captured, so we cannot guarantee uninterrupted or error-free execution on third-party web portals that change their layout, alter authentication flows, or introduce anti-bot countermeasures.
             </p>
           </section>
 

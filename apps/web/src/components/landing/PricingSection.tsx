@@ -12,15 +12,15 @@ interface PricingSectionProps {
 const FAQ_ITEMS = [
   {
     q: 'Do I need coding experience or browser extensions?',
-    a: 'Zero coding is required. ReFlow works by connecting directly to standard Google Chrome via Chrome DevTools Protocol (CDP port 9222). You never have to install third-party browser extensions, write Selenium/Puppeteer scripts, or maintain fragile code.',
+    a: 'No coding, and no browser extensions. ReFlow drives the copy of Chrome already on your PC through the Chrome DevTools Protocol, so there is nothing to install into your browser and no Selenium or Puppeteer scripts to maintain.',
   },
   {
     q: 'Where are my files and passwords stored?',
-    a: '100% on your local machine. The ReFlow desktop daemon runs locally, storing downloaded reports, credentials, and session tokens strictly on your private file system. Confidential data never leaves your environment.',
+    a: 'Your portal logins and browser session stay on your own PC, in the ReFlow desktop app. Files it collects are written to a folder you choose, and a copy is uploaded to your ReFlow workspace so you can download them from any machine.',
   },
   {
     q: 'What happens if a website updates its layout or buttons?',
-    a: 'ReFlow features an autonomous self-healing selector fallback engine. If a website changes class names or DOM structures, ReFlow evaluates visual coordinates, ARIA roles, and semantic parent relationships to keep the workflow running seamlessly.',
+    a: 'Pages do change, and no tool can promise otherwise. What ReFlow gives you is the ability to fix it quickly: every recorded step stays editable on the workflow canvas, so you correct the one step that broke and run again instead of recording the whole task from scratch.',
   },
   {
     q: 'What counts as an automated step?',
@@ -28,11 +28,11 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Can I schedule workflows to run unattended?',
-    a: 'Yes. With our Pro and Enterprise plans, you can schedule routines to execute daily, weekly, or on custom cron schedules in the background without needing manual intervention.',
+    a: 'Not yet. Today a run starts when you press Run from the dashboard or the workflow canvas. Scheduled runs are on the roadmap and are not part of the current release.',
   },
   {
     q: 'How does the Enterprise tier work?',
-    a: 'Enterprise plans include dedicated concurrent headless runners, custom SLA guarantees, multi-tenant portal orchestration, and a direct Slack/engineering support channel with our developers.',
+    a: 'Enterprise is arranged directly with us: higher volume, help getting your first workflows set up, and a direct line to the team that builds ReFlow.',
   },
 ];
 
@@ -223,13 +223,13 @@ export default function PricingSection({ onSelectTier }: PricingSectionProps = {
                   <span className="w-4 h-4 rounded-full bg-white text-zinc-950 flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-bold">
                     <Check className="w-3 h-3 stroke-[3]" />
                   </span>
-                  <span>Self-healing selector fallback trees</span>
+                  <span>Every recorded step stays editable on the canvas</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <span className="w-4 h-4 rounded-full bg-white text-zinc-950 flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-bold">
                     <Check className="w-3 h-3 stroke-[3]" />
                   </span>
-                  <span>Nested ERP iframe &amp; shadowDOM traversal</span>
+                  <span>Multi-page lists and table extraction</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <span className="w-4 h-4 rounded-full bg-white text-zinc-950 flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-bold">
@@ -274,7 +274,7 @@ export default function PricingSection({ onSelectTier }: PricingSectionProps = {
                 </span>
               </div>
               <p className="text-xs text-zinc-400 mb-6 leading-relaxed">
-                For large-scale operations with dedicated headless runners, custom SLA requirements, and multi-tenant portals.
+                For larger teams that need more volume, help getting set up, and a direct line to us.
               </p>
               <div className="mb-6 flex items-baseline gap-1">
                 <span className="text-4xl font-extrabold text-white tracking-tight font-mono">{enterprisePrice}</span>
@@ -295,7 +295,7 @@ export default function PricingSection({ onSelectTier }: PricingSectionProps = {
                   <span className="w-4 h-4 rounded-full bg-white/10 text-white flex items-center justify-center shrink-0 mt-0.5 text-[10px]">
                     <Check className="w-3 h-3" />
                   </span>
-                  <span>Concurrent runner workers</span>
+                  <span>Dedicated onboarding and setup help</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <span className="w-4 h-4 rounded-full bg-white/10 text-white flex items-center justify-center shrink-0 mt-0.5 text-[10px]">
