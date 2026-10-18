@@ -2,46 +2,42 @@
 
 ## 1. Purpose and Architecture
 
-This document defines the planning, architecture, and review workflow for ReFlow. It is written specifically for human planners, top-tier reasoning models (ChatGPT, Claude, Gemini 4 Argon), and code reviewers.
+This document defines the planning, architecture, implementation, and review workflow for ReFlow. It applies to human planners, AI planners, implementers, and reviewers alike, and is deliberately tool-agnostic: roles are described by responsibility rather than by vendor or product name.
 
-Implementation rules for the execution model (Gemini Flash) are maintained separately in root [AGENTS.md](AGENTS.md).
+Implementation rules for the executing agent are maintained separately in root [AGENTS.md](../../AGENTS.md).
 
-All prompt handoffs, context sharing, and report transfers between models are handled manually by the user. There is no automated model-to-model communication or direct execution bridge.
+All prompt handoffs, context sharing, and report transfers are handled manually by the user. There is no automated model-to-model communication or direct execution bridge.
 
-## 2. Model Roles and Boundaries
+## 2. Roles and Boundaries
 
-The high-tier models are **not interchangeable**; each fills a specialized role based on its concrete tooling and repository visibility:
+Roles are defined by responsibility, not by which tool fills them. A single tool may fill several roles across different tasks, and role assignment is expected to move as tooling and access change:
 
-- **ChatGPT (The Default Verifier)**:
-  - **Primary responsibility**: Verification, regression checking, and final implementation review.
-  - **Tooling advantage**: Can read the GitHub repository directly via GitHub integration to inspect commits, diffs, branches, and code files in place.
-  - **Workflow**: Compares actual git commits and pull request diffs against original requirements and acceptance criteria.
-- **Claude (The Planner)**:
+- **The Planner**:
   - **Primary responsibility**: System architecture, multi-file planning, and implementation prompt drafting.
-  - **Tooling advantage**: Claude can read a branch directly when given repository access, and otherwise uses a Repomix pack.
-  - **Workflow**: Analyzes requirements, applies pushback rules for big modules, formulates trade-offs, and drafts implementation prompts for Flash.
-- **Gemini 4 Argon (The Planner)**:
-  - **Primary responsibility**: System architecture and complementary planning.
-  - **Tooling advantage**: Uses Repomix snapshot packs to ingest repository context and evaluate complex logic.
-  - **Workflow**: Contributes focused architectural analysis, trade-off evaluation, and prompt generation using context packs.
-- **Gemini Flash (The Implementer)**:
-  - **Primary responsibility**: Local code implementation and test execution in Antigravity.
-  - **Tooling advantage**: Direct file modification and terminal execution in the working directory.
+  - **Capability required**: Read access to the repository (directly or through a Repomix context pack) plus enough reasoning depth to evaluate complex logic and trade-offs.
+  - **Workflow**: Analyzes requirements, applies the pushback rules for big modules, formulates trade-offs, and drafts the implementation prompt for the implementer.
+- **The Implementer**:
+  - **Primary responsibility**: Local code implementation and test execution.
+  - **Capability required**: Direct file modification and terminal execution in the working directory.
   - **Workflow**: Reads root `AGENTS.md`, executes in Quick mode or Careful mode, writes negative tests before sensitive fixes, and returns a structured completion report.
+- **The Verifier**:
+  - **Primary responsibility**: Verification, regression checking, and final implementation review.
+  - **Capability required**: The ability to inspect commits, diffs, branches, and code files directly rather than trusting report summaries.
+  - **Workflow**: Compares actual git commits and pull request diffs against the original requirements and acceptance criteria.
 
-### Why Model Roles Can Change
+### Why Roles Can Change
 Roles are not rigid entitlements. They can change when:
-- **Repository access changes**: If GitHub integration is unavailable for ChatGPT, Claude or Argon can perform code review from repomix diff packs or commit patches.
-- **Quota and rate limits**: When a high-tier model exhausts its usage quotas, another top-tier model assumes planning or review duties.
-- **Context window requirements**: A refactor requiring an exceptionally large single-pass context window may require shifting planning to a model with higher token limits.
-- **Tooling updates**: When IDE extensions, local plugins, or model platform capabilities evolve.
+- **Repository access changes**: If a verifier cannot read the repository directly, another tool with code access performs the review from diff packs or commit patches.
+- **Quota and rate limits**: When one tool exhausts its usage quota, another capable tool assumes planning or review duties.
+- **Context window requirements**: A refactor requiring an exceptionally large single-pass context window may require shifting planning to a tool with higher token limits.
+- **Tooling updates**: When IDE extensions, local plugins, or platform capabilities evolve.
 
 ## 3. Quota Management Rules
 
-Top-tier models consume significant quota and must be used with discipline:
+Planning and review tooling consumes significant quota and must be used with discipline:
 
-- **Quick fixes skip top-tier models entirely**: Bug fixes, localized tweaks, typos, single-file edits, and straightforward improvements go straight from the user to Gemini Flash. Do not involve ChatGPT, Claude, or Argon for routine edits.
-- **Reserve top-tier models for Careful mode**: Involve Claude, Gemini 4 Argon, or ChatGPT only for planning big modules, complex multi-step features, architectural refactors, or high-risk security audits.
+- **Quick fixes skip planning and review entirely**: Bug fixes, localized tweaks, typos, single-file edits, and straightforward improvements go straight to the implementer. Do not involve planner or verifier roles for routine edits.
+- **Reserve planners and verifiers for Careful mode**: Involve them only for planning big modules, complex multi-step features, architectural refactors, or high-risk security audits.
 - **Prefer narrow Repomix packs over full-repo packs**: When creating context packs for planners, pack only the relevant package or directory (for example, `apps/web`, `packages/engine`, or `apps/desktop`). Never generate or feed a full-monorepo pack when a targeted pack suffices. Narrow packs preserve context window token limits and reduce latency.
 
 ## 4. Repomix Snapshot Rules
@@ -104,7 +100,7 @@ Whenever a task touches authentication (`apps/web/src/lib/auth/`), runner tokens
 
 ## 7. Implementation Prompt Structure
 
-When a planner prepares a Careful-mode prompt for Gemini Flash, the prompt must include:
+When a planner prepares a Careful-mode prompt for the implementer, the prompt must include:
 1. **Task Title & Mode**: Clearly marked as Careful mode.
 2. **Goal & Source Scope**: Specific user-visible outcome and explicit files to inspect.
 3. **Pre-Implementation Test Requirement**: Negative security tests required before fix code.
@@ -115,7 +111,7 @@ When a planner prepares a Careful-mode prompt for Gemini Flash, the prompt must 
 ## 8. Review and Verification Standard
 
 When reviewing a completed task:
-- ChatGPT inspects the commit directly on GitHub (or Claude/Argon reviews an explicit git diff).
+- The verifier inspects the commit directly through repository access, or reviews an explicit git diff.
 - Verify against the code in the repository, not unverified claims in the completion report.
 - Confirm all negative security tests were written and executed.
 - Ensure no out-of-scope files were modified.

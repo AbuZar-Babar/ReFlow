@@ -1,7 +1,7 @@
 # ReFlow Design System (DESIGN.md)
 
 ## Brand Identity & Direction
-- **Product:** ReFlow (Autonomous Browser Automation & ReFlow Engine)
+- **Product:** ReFlow (Autonomous Browser Automation & RPA Platform)
 - **Aesthetic:** Dark Architectural Precision & Editorial Minimalism
 - **Visual References:** BZ DesignX / Modern Swiss Digital Architecture
 - **Core Mood:** Serious, high-performance, calm, razor-sharp software instrument. No cartoon mascots, no rainbow glow soup, no fake hype.
@@ -57,7 +57,7 @@ Dial: ENERGY 1 / RHYTHM 2 / MOTION 2
    - Minimal text links without pills or underline bars.
    - High-contrast stark white pill CTA button (`Start Free ↗` / `Console ↗`).
 2. **Hero Presentation:**
-   - Removed: 3D cartoon robot mascot, pulsing radial background orbs, animated scanlines.
+   - Excluded from the hero: 3D cartoon robot mascot, pulsing radial background orbs, animated scanlines. Legacy `RobotMascot` and `RobotAvatar` components still exist in the tree but are unreferenced by any route.
    - Added: Large editorial headline, clean subtext, dual CTAs, and a precision browser automation frame with genuine window controls and real workflow steps.
 3. **Architectural Metrics Strip:**
    - 4-column connected hairline grid with `border-white/10` dividers.
