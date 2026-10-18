@@ -1,0 +1,3 @@
+# Keep generated fixture PDFs byte-exact: CRLF conversion would corrupt the
+# xref byte offsets inside the files and break the PDFs on fresh checkouts.
+*.pdf binary

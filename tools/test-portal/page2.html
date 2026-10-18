@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Acme Invoices &mdash; Test Portal (Page 2 of 3)</title>
+    <style>
+    :root { font-family: system-ui, 'Segoe UI', Roboto, Arial, sans-serif; }
+    body { margin: 0; background: #f6f7f9; color: #1c2733; }
+    header { background: #12314f; color: #fff; padding: 18px 28px; }
+    header h1 { margin: 0; font-size: 20px; }
+    header p { margin: 4px 0 0; opacity: .75; font-size: 13px; }
+    main { max-width: 860px; margin: 28px auto; background: #fff; border: 1px solid #dde3ea; border-radius: 10px; padding: 22px 26px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e6ebf1; }
+    th { color: #5b6b7d; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+    a { color: #1466c2; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .pagination { margin-top: 18px; display: flex; gap: 8px; align-items: center; font-size: 14px; }
+    .pagination a { padding: 6px 11px; border: 1px solid #cfd8e3; border-radius: 7px; }
+    .pagination .current { padding: 6px 11px; border-radius: 7px; background: #12314f; color: #fff; border: 1px solid #12314f; font-weight: 600; }
+    footer { text-align: center; color: #7a8797; font-size: 12px; margin: 18px 0 30px; }
+</style>
+  </head>
+  <body>
+    <header>
+      <h1>Acme Test Portal</h1>
+      <p>Demo portal for ReFlow end-to-end runs &mdash; invoices with downloadable PDFs</p>
+    </header>
+    <main>
+      <table id="invoices">
+        <thead>
+          <tr><th>Invoice</th><th>Date</th><th>Amount</th><th>File</th></tr>
+        </thead>
+        <tbody>
+        <tr>
+          <td>INV-0007</td>
+          <td>2026-09-19</td>
+          <td>$1,822.82</td>
+          <td><a class="download" href="pdfs/INV-0007.pdf" download="INV-0007.pdf">Download PDF</a></td>
+        </tr>
+        <tr>
+          <td>INV-0008</td>
+          <td>2026-09-22</td>
+          <td>$1,959.79</td>
+          <td><a class="download" href="pdfs/INV-0008.pdf" download="INV-0008.pdf">Download PDF</a></td>
+        </tr>
+        <tr>
+          <td>INV-0009</td>
+          <td>2026-09-25</td>
+          <td>$2,096.76</td>
+          <td><a class="download" href="pdfs/INV-0009.pdf" download="INV-0009.pdf">Download PDF</a></td>
+        </tr>
+        <tr>
+          <td>INV-0010</td>
+          <td>2026-10-01</td>
+          <td>$2,233.73</td>
+          <td><a class="download" href="pdfs/INV-0010.pdf" download="INV-0010.pdf">Download PDF</a></td>
+        </tr>
+        <tr>
+          <td>INV-0011</td>
+          <td>2026-10-04</td>
+          <td>$2,370.70</td>
+          <td><a class="download" href="pdfs/INV-0011.pdf" download="INV-0011.pdf">Download PDF</a></td>
+        </tr>
+        <tr>
+          <td>INV-0012</td>
+          <td>2026-10-07</td>
+          <td>$2,507.67</td>
+          <td><a class="download" href="pdfs/INV-0012.pdf" download="INV-0012.pdf">Download PDF</a></td>
+        </tr>
+        </tbody>
+      </table>
+      <nav class="pagination" aria-label="Pagination">
+        <a href="index.html">1</a>
+        <span class="current" aria-current="page">2</span>
+        <a href="page3.html">3</a>
+        <a rel="next" href="page3.html">Next</a>
+      </nav>
+    </main>
+    <footer>Page 2 of 3 &mdash; 18 invoices total</footer>
+  </body>
+</html>
