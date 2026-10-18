@@ -359,220 +359,6 @@ body {
 }
 
 /* ========================================================
-   Theme-Specific Primary Accent Highlights & Buttons
-   ======================================================== */
-
-/* 2. Charcoal Blue */
-[data-theme="charcoal-indigo"] .text-cyan-400,
-[data-theme="charcoal-indigo"] .text-cyan-300,
-[data-theme="charcoal-indigo"] .text-cyan-500 {
-  color: #82abff !important;
-}
-[data-theme="charcoal-indigo"] .bg-cyan-400,
-[data-theme="charcoal-indigo"] .bg-cyan-500 {
-  background-color: #82abff !important;
-}
-[data-theme="charcoal-indigo"] .bg-cyan-500\/10,
-[data-theme="charcoal-indigo"] .bg-cyan-500\/15,
-[data-theme="charcoal-indigo"] .bg-cyan-500\/20 {
-  background-color: rgba(130, 171, 255, 0.14) !important;
-}
-[data-theme="charcoal-indigo"] .border-cyan-500\/20,
-[data-theme="charcoal-indigo"] .border-cyan-500\/30,
-[data-theme="charcoal-indigo"] .border-cyan-500\/40,
-[data-theme="charcoal-indigo"] .border-cyan-500\/50,
-[data-theme="charcoal-indigo"] .border-cyan-400\/30,
-[data-theme="charcoal-indigo"] .border-cyan-400\/40 {
-  border-color: rgba(130, 171, 255, 0.32) !important;
-}
-[data-theme="charcoal-indigo"] .ring-cyan-500\/30,
-[data-theme="charcoal-indigo"] .ring-cyan-500\/50 {
-  --tw-ring-color: rgba(130, 171, 255, 0.36) !important;
-}
-[data-theme="charcoal-indigo"] .from-cyan-500 {
-  --tw-gradient-from: #82abff var(--tw-gradient-from-position) !important;
-}
-[data-theme="charcoal-indigo"] .to-indigo-600,
-[data-theme="charcoal-indigo"] .to-blue-600 {
-  --tw-gradient-to: #5686dc var(--tw-gradient-to-position) !important;
-}
-[data-theme="charcoal-indigo"] .hover\:from-cyan-400:hover {
-  --tw-gradient-from: #a5c2ff var(--tw-gradient-from-position) !important;
-}
-[data-theme="charcoal-indigo"] .hover\:to-indigo-500:hover,
-[data-theme="charcoal-indigo"] .hover\:to-blue-500:hover {
-  --tw-gradient-to: #82abff var(--tw-gradient-to-position) !important;
-}
-
-/* 3. Emerald Matrix */
-[data-theme="emerald-matrix"] .text-cyan-400,
-[data-theme="emerald-matrix"] .text-cyan-300,
-[data-theme="emerald-matrix"] .text-cyan-500 {
-  color: #10b981 !important;
-}
-[data-theme="emerald-matrix"] .bg-cyan-400,
-[data-theme="emerald-matrix"] .bg-cyan-500 {
-  background-color: #10b981 !important;
-}
-[data-theme="emerald-matrix"] .bg-cyan-500\/10,
-[data-theme="emerald-matrix"] .bg-cyan-500\/15,
-[data-theme="emerald-matrix"] .bg-cyan-500\/20 {
-  background-color: rgba(16, 185, 129, 0.15) !important;
-}
-[data-theme="emerald-matrix"] .border-cyan-500\/20,
-[data-theme="emerald-matrix"] .border-cyan-500\/30,
-[data-theme="emerald-matrix"] .border-cyan-500\/40,
-[data-theme="emerald-matrix"] .border-cyan-500\/50,
-[data-theme="emerald-matrix"] .border-cyan-400\/30,
-[data-theme="emerald-matrix"] .border-cyan-400\/40 {
-  border-color: rgba(16, 185, 129, 0.35) !important;
-}
-[data-theme="emerald-matrix"] .ring-cyan-500\/30,
-[data-theme="emerald-matrix"] .ring-cyan-500\/50 {
-  --tw-ring-color: rgba(16, 185, 129, 0.35) !important;
-}
-[data-theme="emerald-matrix"] .from-cyan-500 {
-  --tw-gradient-from: #10b981 var(--tw-gradient-from-position) !important;
-}
-[data-theme="emerald-matrix"] .to-indigo-600,
-[data-theme="emerald-matrix"] .to-blue-600 {
-  --tw-gradient-to: #059669 var(--tw-gradient-to-position) !important;
-}
-[data-theme="emerald-matrix"] .hover\:from-cyan-400:hover {
-  --tw-gradient-from: #34d399 var(--tw-gradient-from-position) !important;
-}
-[data-theme="emerald-matrix"] .hover\:to-indigo-500:hover,
-[data-theme="emerald-matrix"] .hover\:to-blue-500:hover {
-  --tw-gradient-to: #10b981 var(--tw-gradient-to-position) !important;
-}
-
-/* 4. Slate Dark */
-[data-theme="slate-dark"] .text-cyan-400,
-[data-theme="slate-dark"] .text-cyan-300,
-[data-theme="slate-dark"] .text-cyan-500 {
-  color: #38bdf8 !important;
-}
-[data-theme="slate-dark"] .bg-cyan-400,
-[data-theme="slate-dark"] .bg-cyan-500 {
-  background-color: #38bdf8 !important;
-}
-[data-theme="slate-dark"] .bg-cyan-500\/10,
-[data-theme="slate-dark"] .bg-cyan-500\/15,
-[data-theme="slate-dark"] .bg-cyan-500\/20 {
-  background-color: rgba(56, 189, 248, 0.15) !important;
-}
-[data-theme="slate-dark"] .border-cyan-500\/20,
-[data-theme="slate-dark"] .border-cyan-500\/30,
-[data-theme="slate-dark"] .border-cyan-500\/40,
-[data-theme="slate-dark"] .border-cyan-500\/50,
-[data-theme="slate-dark"] .border-cyan-400\/30,
-[data-theme="slate-dark"] .border-cyan-400\/40 {
-  border-color: rgba(56, 189, 248, 0.35) !important;
-}
-[data-theme="slate-dark"] .ring-cyan-500\/30,
-[data-theme="slate-dark"] .ring-cyan-500\/50 {
-  --tw-ring-color: rgba(56, 189, 248, 0.35) !important;
-}
-[data-theme="slate-dark"] .from-cyan-500 {
-  --tw-gradient-from: #38bdf8 var(--tw-gradient-from-position) !important;
-}
-[data-theme="slate-dark"] .to-indigo-600,
-[data-theme="slate-dark"] .to-blue-600 {
-  --tw-gradient-to: #2563eb var(--tw-gradient-to-position) !important;
-}
-[data-theme="slate-dark"] .hover\:from-cyan-400:hover {
-  --tw-gradient-from: #60a5fa var(--tw-gradient-from-position) !important;
-}
-[data-theme="slate-dark"] .hover\:to-indigo-500:hover,
-[data-theme="slate-dark"] .hover\:to-blue-500:hover {
-  --tw-gradient-to: #38bdf8 var(--tw-gradient-to-position) !important;
-}
-
-/* 5. Crimson Rose */
-[data-theme="crimson-rose"] .text-cyan-400,
-[data-theme="crimson-rose"] .text-cyan-300,
-[data-theme="crimson-rose"] .text-cyan-500 {
-  color: #f43f5e !important;
-}
-[data-theme="crimson-rose"] .bg-cyan-400,
-[data-theme="crimson-rose"] .bg-cyan-500 {
-  background-color: #f43f5e !important;
-}
-[data-theme="crimson-rose"] .bg-cyan-500\/10,
-[data-theme="crimson-rose"] .bg-cyan-500\/15,
-[data-theme="crimson-rose"] .bg-cyan-500\/20 {
-  background-color: rgba(244, 63, 94, 0.15) !important;
-}
-[data-theme="crimson-rose"] .border-cyan-500\/20,
-[data-theme="crimson-rose"] .border-cyan-500\/30,
-[data-theme="crimson-rose"] .border-cyan-500\/40,
-[data-theme="crimson-rose"] .border-cyan-500\/50,
-[data-theme="crimson-rose"] .border-cyan-400\/30,
-[data-theme="crimson-rose"] .border-cyan-400\/40 {
-  border-color: rgba(244, 63, 94, 0.35) !important;
-}
-[data-theme="crimson-rose"] .ring-cyan-500\/30,
-[data-theme="crimson-rose"] .ring-cyan-500\/50 {
-  --tw-ring-color: rgba(244, 63, 94, 0.35) !important;
-}
-[data-theme="crimson-rose"] .from-cyan-500 {
-  --tw-gradient-from: #f43f5e var(--tw-gradient-from-position) !important;
-}
-[data-theme="crimson-rose"] .to-indigo-600,
-[data-theme="crimson-rose"] .to-blue-600 {
-  --tw-gradient-to: #be123c var(--tw-gradient-to-position) !important;
-}
-[data-theme="crimson-rose"] .hover\:from-cyan-400:hover {
-  --tw-gradient-from: #fb7185 var(--tw-gradient-from-position) !important;
-}
-[data-theme="crimson-rose"] .hover\:to-indigo-500:hover,
-[data-theme="crimson-rose"] .hover\:to-blue-500:hover {
-  --tw-gradient-to: #e11d48 var(--tw-gradient-to-position) !important;
-}
-
-/* 6. Forest */
-[data-theme="forest"] .text-cyan-400,
-[data-theme="forest"] .text-cyan-300,
-[data-theme="forest"] .text-cyan-500 {
-  color: #34d399 !important;
-}
-[data-theme="forest"] .bg-cyan-400,
-[data-theme="forest"] .bg-cyan-500 {
-  background-color: #34d399 !important;
-}
-[data-theme="forest"] .bg-cyan-500\/10,
-[data-theme="forest"] .bg-cyan-500\/15,
-[data-theme="forest"] .bg-cyan-500\/20 {
-  background-color: rgba(52, 211, 153, 0.15) !important;
-}
-[data-theme="forest"] .border-cyan-500\/20,
-[data-theme="forest"] .border-cyan-500\/30,
-[data-theme="forest"] .border-cyan-500\/40,
-[data-theme="forest"] .border-cyan-500\/50,
-[data-theme="forest"] .border-cyan-400\/30,
-[data-theme="forest"] .border-cyan-400\/40 {
-  border-color: rgba(52, 211, 153, 0.35) !important;
-}
-[data-theme="forest"] .ring-cyan-500\/30,
-[data-theme="forest"] .ring-cyan-500\/50 {
-  --tw-ring-color: rgba(52, 211, 153, 0.35) !important;
-}
-[data-theme="forest"] .from-cyan-500 {
-  --tw-gradient-from: #34d399 var(--tw-gradient-from-position) !important;
-}
-[data-theme="forest"] .to-indigo-600,
-[data-theme="forest"] .to-blue-600 {
-  --tw-gradient-to: #059669 var(--tw-gradient-to-position) !important;
-}
-[data-theme="forest"] .hover\:from-cyan-400:hover {
-  --tw-gradient-from: #6ee7b7 var(--tw-gradient-from-position) !important;
-}
-[data-theme="forest"] .hover\:to-indigo-500:hover,
-[data-theme="forest"] .hover\:to-blue-500:hover {
-  --tw-gradient-to: #10b981 var(--tw-gradient-to-position) !important;
-}
-
-/* ========================================================
    Light Mode Global Text, Surface and Form Adaptations
    ======================================================== */
 
@@ -1110,3 +896,246 @@ body {
 .animate-running-ticker:hover {
   animation-play-state: paused;
 }
+
+/* ========================================================
+   Soft Theme Layer
+   --------------------------------------------------------
+   Neutral-first surfaces, in the spirit of Notion and Obsidian:
+   one shared graphite ladder for every palette, with the palette's
+   colour expressed only through the accent. That is what stops a
+   green theme from showing blue-black cards: the cards no longer
+   carry a hue of their own.
+   ======================================================== */
+
+[data-mode="dark"] {
+  /* Shared graphite ladder — replaces Tailwind's blue-tinted slate. */
+  --color-slate-950: #0a0b0d;
+  --color-slate-900: #101215;
+  --color-slate-800: #171a1e;
+  --color-slate-700: #22252b;
+  --color-slate-600: #34383f;
+  --color-slate-500: #61666f;
+  --color-slate-400: #8c929b;
+  --color-slate-300: #b4b9c1;
+  --color-slate-200: #d3d6dc;
+  --color-slate-100: #e6e8ec;
+  --color-slate-50: #f5f6f8;
+
+  /* zinc / gray / neutral / stone share the same ladder, so modal and
+     editor surfaces cannot drift into a different hue. */
+  --color-zinc-950: #0a0b0d;
+  --color-zinc-900: #101215;
+  --color-zinc-800: #171a1e;
+  --color-zinc-700: #22252b;
+  --color-zinc-600: #34383f;
+  --color-zinc-500: #61666f;
+  --color-zinc-400: #8c929b;
+  --color-zinc-300: #b4b9c1;
+  --color-zinc-200: #d3d6dc;
+  --color-zinc-100: #e6e8ec;
+  --color-zinc-50: #f5f6f8;
+
+  --color-gray-950: #0a0b0d;
+  --color-gray-900: #101215;
+  --color-gray-800: #171a1e;
+  --color-gray-700: #22252b;
+  --color-gray-600: #34383f;
+  --color-gray-500: #61666f;
+  --color-gray-400: #8c929b;
+  --color-gray-300: #b4b9c1;
+  --color-gray-200: #d3d6dc;
+  --color-gray-100: #e6e8ec;
+  --color-gray-50: #f5f6f8;
+
+  --color-neutral-950: #0a0b0d;
+  --color-neutral-900: #101215;
+  --color-neutral-800: #171a1e;
+  --color-neutral-700: #22252b;
+  --color-neutral-600: #34383f;
+  --color-neutral-500: #61666f;
+  --color-neutral-400: #8c929b;
+  --color-neutral-300: #b4b9c1;
+  --color-neutral-200: #d3d6dc;
+  --color-neutral-100: #e6e8ec;
+  --color-neutral-50: #f5f6f8;
+
+  /* Cyan was the old brand hue. Every palette now owns it. */
+  --color-cyan-200: color-mix(in oklab, var(--primary-color) 60%, #ffffff);
+  --color-cyan-300: color-mix(in oklab, var(--primary-color) 72%, #ffffff);
+  --color-cyan-400: color-mix(in oklab, var(--primary-color) 88%, #ffffff);
+  --color-cyan-500: var(--primary-color);
+  --color-cyan-600: color-mix(in oklab, var(--primary-color) 82%, #000000);
+  --color-cyan-700: color-mix(in oklab, var(--primary-color) 68%, #000000);
+
+  /* Blue and indigo carry the secondary accent. */
+  --color-blue-200: color-mix(in oklab, var(--accent-color) 60%, #ffffff);
+  --color-blue-300: color-mix(in oklab, var(--accent-color) 72%, #ffffff);
+  --color-blue-400: color-mix(in oklab, var(--accent-color) 88%, #ffffff);
+  --color-blue-500: var(--accent-color);
+  --color-blue-600: color-mix(in oklab, var(--accent-color) 82%, #000000);
+  --color-blue-700: color-mix(in oklab, var(--accent-color) 68%, #000000);
+
+  --color-indigo-300: color-mix(in oklab, var(--accent-color) 72%, #ffffff);
+  --color-indigo-400: color-mix(in oklab, var(--accent-color) 88%, #ffffff);
+  --color-indigo-500: var(--accent-color);
+  --color-indigo-600: color-mix(in oklab, var(--accent-color) 82%, #000000);
+
+  --color-sky-300: color-mix(in oklab, var(--primary-color) 72%, #ffffff);
+  --color-sky-400: color-mix(in oklab, var(--primary-color) 88%, #ffffff);
+  --color-sky-500: var(--primary-color);
+
+  /* Status colours stay semantic, just muted so they stop shouting. */
+  --color-emerald-300: #8ad2ae;
+  --color-emerald-400: #5cbb8e;
+  --color-emerald-500: #46a87b;
+  --color-emerald-600: #3a8f68;
+  --color-rose-300: #eaa6ab;
+  --color-rose-400: #e08a90;
+  --color-rose-500: #cf6b74;
+  --color-rose-600: #b3555e;
+  --color-amber-400: #d9a441;
+  --color-amber-500: #c2903a;
+}
+
+/* --- Palette values, softened -------------------------------------
+   Same six themes, same ids. Surfaces sit within a few points of
+   neutral; only the accent carries a real hue. */
+
+[data-mode="dark"][data-theme="reflow-cyber"],
+[data-mode="dark"].theme-reflow-cyber {
+  --canvas-bg: #0b0d10;
+  --surface-bg: #12151a;
+  --surface-hover: #191d23;
+  --sidebar-bg: #090b0e;
+  --header-bg: #0b0d11;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.2);
+  --primary-color: #4fc4d4;
+  --primary-rgb: 79, 196, 212;
+  --accent-color: #7c8ce8;
+  --accent-rgb: 124, 140, 232;
+  --glow-color: rgba(79, 196, 212, 0.18);
+  --foreground: #e7eaee;
+  --text-muted: #98a0aa;
+  --input-bg: #0e1116;
+  --input-border: rgba(255, 255, 255, 0.1);
+}
+
+[data-mode="dark"][data-theme="charcoal-indigo"],
+[data-mode="dark"].theme-charcoal-indigo {
+  --canvas-bg: #0e1015;
+  --surface-bg: #15181f;
+  --surface-hover: #1c2028;
+  --sidebar-bg: #0b0d12;
+  --header-bg: #0d0f14;
+  --border-color: rgba(255, 255, 255, 0.09);
+  --border-hover: rgba(255, 255, 255, 0.2);
+  --primary-color: #8b9cf0;
+  --primary-rgb: 139, 156, 240;
+  --accent-color: #a78bfa;
+  --accent-rgb: 167, 139, 250;
+  --glow-color: rgba(139, 156, 240, 0.18);
+  --foreground: #e9ebf0;
+  --text-muted: #9aa2b1;
+  --input-bg: #111419;
+  --input-border: rgba(255, 255, 255, 0.1);
+}
+
+[data-mode="dark"][data-theme="emerald-matrix"],
+[data-mode="dark"].theme-emerald-matrix {
+  --canvas-bg: #0b100e;
+  --surface-bg: #121815;
+  --surface-hover: #18211c;
+  --sidebar-bg: #090d0b;
+  --header-bg: #0a0f0c;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.2);
+  --primary-color: #4fbf8f;
+  --primary-rgb: 79, 191, 143;
+  --accent-color: #86d3b0;
+  --accent-rgb: 134, 211, 176;
+  --glow-color: rgba(79, 191, 143, 0.18);
+  --foreground: #e6ece8;
+  --text-muted: #97a49c;
+  --input-bg: #0f1512;
+  --input-border: rgba(255, 255, 255, 0.1);
+}
+
+[data-mode="dark"][data-theme="slate-dark"],
+[data-mode="dark"].theme-slate-dark {
+  --canvas-bg: #0d1015;
+  --surface-bg: #14181f;
+  --surface-hover: #1b2028;
+  --sidebar-bg: #0a0d11;
+  --header-bg: #0b0e13;
+  --border-color: rgba(255, 255, 255, 0.09);
+  --border-hover: rgba(255, 255, 255, 0.2);
+  --primary-color: #6aa9e0;
+  --primary-rgb: 106, 169, 224;
+  --accent-color: #8fb8e8;
+  --accent-rgb: 143, 184, 232;
+  --glow-color: rgba(106, 169, 224, 0.18);
+  --foreground: #e8ebf0;
+  --text-muted: #98a1ad;
+  --input-bg: #10141a;
+  --input-border: rgba(255, 255, 255, 0.1);
+}
+
+[data-mode="dark"][data-theme="crimson-rose"],
+[data-mode="dark"].theme-crimson-rose {
+  --canvas-bg: #100e0f;
+  --surface-bg: #171416;
+  --surface-hover: #1f1a1d;
+  --sidebar-bg: #0c0a0b;
+  --header-bg: #0e0c0d;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.2);
+  --primary-color: #d97b86;
+  --primary-rgb: 217, 123, 134;
+  --accent-color: #e8a0a8;
+  --accent-rgb: 232, 160, 168;
+  --glow-color: rgba(217, 123, 134, 0.16);
+  --foreground: #ece7e8;
+  --text-muted: #a89ea1;
+  --input-bg: #141112;
+  --input-border: rgba(255, 255, 255, 0.1);
+}
+
+[data-mode="dark"][data-theme="forest"],
+[data-mode="dark"].theme-forest {
+  --canvas-bg: #0b110e;
+  --surface-bg: #131a16;
+  --surface-hover: #1a231d;
+  --sidebar-bg: #090e0b;
+  --header-bg: #0a100c;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.2);
+  --primary-color: #6fbf9a;
+  --primary-rgb: 111, 191, 154;
+  --accent-color: #9ad4b6;
+  --accent-rgb: 154, 212, 182;
+  --glow-color: rgba(111, 191, 154, 0.16);
+  --foreground: #e7ede9;
+  --text-muted: #98a59d;
+  --input-bg: #0f1512;
+  --input-border: rgba(255, 255, 255, 0.1);
+}
+
+/* The old canvas wash tinted whole pages. Keep a whisper of it so the
+   accent still registers, without the neon haze. */
+[data-mode="dark"] .bg-reflow-canvas {
+  background-image:
+    radial-gradient(at 12% 8%, rgba(var(--primary-rgb), 0.04) 0px, transparent 45%),
+    radial-gradient(at 88% 4%, rgba(var(--accent-rgb), 0.03) 0px, transparent 40%);
+}
+
+/* Light mode: neutral paper instead of a colour-washed page. */
+[data-mode="light"] {
+  --canvas-bg: #f7f7f8;
+  --surface-bg: #ffffff;
+  --surface-hover: #f1f1f3;
+  --border-color: #e4e4e7;
+  --foreground: #18181b;
+  --text-muted: #71717a;
+}
+

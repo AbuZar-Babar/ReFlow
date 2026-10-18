@@ -293,24 +293,46 @@ test('Theme Palettes Button Gradients and Surface Adaptations in globals.css', a
   const cssPath = path.resolve('src/app/globals.css');
   const css = fs.readFileSync(cssPath, 'utf8');
 
-  await t.test('globals.css defines theme-specific button gradient overrides', () => {
-    const NON_DEFAULT_THEMES = [
+  await t.test('globals.css remaps the Tailwind palette per theme instead of patching classes', () => {
+    // One shared graphite ladder means a card cannot carry a blue hue in a green theme.
+    assert.ok(
+      css.includes('--color-slate-900: #101215'),
+      'globals.css must redefine the neutral slate ladder'
+    );
+    assert.ok(
+      css.includes('--color-zinc-900: #101215'),
+      'zinc must follow the same ladder so modals cannot drift'
+    );
+    assert.ok(
+      css.includes('--color-cyan-500: var(--primary-color)'),
+      'cyan utilities must resolve to the active palette accent'
+    );
+    assert.ok(
+      css.includes('--color-blue-600: color-mix(in oklab, var(--accent-color)'),
+      'blue utilities must resolve to the secondary accent'
+    );
+
+    // Every palette overrides the base tokens with softened values.
+    const THEMES = [
+      'reflow-cyber',
       'charcoal-indigo',
       'emerald-matrix',
       'slate-dark',
       'crimson-rose',
       'forest'
     ];
-    for (const theme of NON_DEFAULT_THEMES) {
+    for (const theme of THEMES) {
       assert.ok(
-        css.includes(`[data-theme="${theme}"] .from-cyan-500`),
-        `globals.css must override .from-cyan-500 for ${theme}`
-      );
-      assert.ok(
-        css.includes(`[data-theme="${theme}"] .to-indigo-600`),
-        `globals.css must override .to-indigo-600 for ${theme}`
+        css.includes(`[data-mode="dark"][data-theme="${theme}"]`),
+        `globals.css must soften the ${theme} palette for dark mode`
       );
     }
+
+    // The old per-theme !important class patches must not come back.
+    assert.ok(
+      !css.includes('[data-theme="charcoal-indigo"] .from-cyan-500'),
+      'per-theme class patches are replaced by the palette remap'
+    );
   });
 
   await t.test('globals.css defines active nav link and ambient surface gradient tokens', () => {
