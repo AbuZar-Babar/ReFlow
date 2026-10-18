@@ -80,6 +80,17 @@ const style = `
     .pagination a { padding: 6px 11px; border: 1px solid #cfd8e3; border-radius: 7px; }
     .pagination .current { padding: 6px 11px; border-radius: 7px; background: #12314f; color: #fff; border: 1px solid #12314f; font-weight: 600; }
     footer { text-align: center; color: #7a8797; font-size: 12px; margin: 18px 0 30px; }
+    .views { margin-top: 10px; font-size: 13px; }
+    .views a { color: #9fc0e6; }
+    .note { background: #fff8e5; border: 1px solid #f0d999; color: #7a5b12; border-radius: 8px; padding: 10px 12px; font-size: 13px; margin-bottom: 16px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+    .invoice-card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 16px; background: #fbfcfe; }
+    .invoice-card .card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .invoice-card .inv-num { font-weight: 700; font-size: 15px; color: #12314f; }
+    .badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: #fdecec; color: #b42318; border: 1px solid #f5c2c0; }
+    .invoice-card dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 13px; }
+    .invoice-card dt { color: #7a8797; }
+    .invoice-card dd { margin: 0; }
 `;
 
 function renderPage(page) {
@@ -117,6 +128,9 @@ function renderPage(page) {
     <header>
       <h1>Acme Test Portal</h1>
       <p>Demo portal for ReFlow end-to-end runs &mdash; invoices with downloadable PDFs</p>
+      <nav class="views">
+        <a href="cards.html">Card view (no download buttons) &rarr;</a>
+      </nav>
     </header>
     <main>
       <table id="invoices">
@@ -132,6 +146,54 @@ ${nav.join("\n")}
       </nav>
     </main>
     <footer>Page ${page} of ${PAGES} &mdash; ${TOTAL} invoices total</footer>
+  </body>
+</html>
+`;
+}
+
+function renderCardsPage() {
+  const cards = invoices
+    .map(
+      (inv) => `        <article class="invoice-card" data-invoice="${inv.num}">
+          <div class="card-top">
+            <span class="inv-num">${inv.num}</span>
+            <span class="badge">No download</span>
+          </div>
+          <dl>
+            <dt>Date</dt><dd class="inv-date">${inv.date}</dd>
+            <dt>Amount</dt><dd class="inv-amount">${inv.amount}</dd>
+            <dt>Status</dt><dd class="inv-status">Awaiting document upload</dd>
+          </dl>
+        </article>`
+    )
+    .join("\n");
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Acme Test Portal &mdash; Invoice Cards (no download)</title>
+    <style>${style}</style>
+  </head>
+  <body>
+    <header>
+      <h1>Acme Test Portal</h1>
+      <p>Invoice cards &mdash; this view has no download button</p>
+      <nav class="views">
+        <a href="index.html">&larr; Table view (with PDF downloads)</a>
+      </nav>
+    </header>
+    <main>
+      <div class="note">
+        This view intentionally has <strong>no download buttons</strong> &mdash; invoice data only.
+        Capture a field on the first card and ReFlow should iterate every card and export a spreadsheet.
+      </div>
+      <div class="cards">
+${cards}
+      </div>
+    </main>
+    <footer>${TOTAL} invoice cards &mdash; data only, no files</footer>
   </body>
 </html>
 `;
@@ -155,4 +217,6 @@ for (let p = 1; p <= PAGES; p++) {
   fs.writeFileSync(path.join(ROOT, name), renderPage(p));
 }
 
-console.log(`Built test portal: ${PAGES} pages, ${invoices.length} PDFs in ${PDF_DIR}`);
+fs.writeFileSync(path.join(ROOT, "cards.html"), renderCardsPage());
+
+console.log(`Built test portal: ${PAGES} list pages, cards.html (no downloads), ${invoices.length} PDFs in ${PDF_DIR}`);

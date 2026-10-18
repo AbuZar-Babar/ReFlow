@@ -20,12 +20,26 @@
     .pagination a { padding: 6px 11px; border: 1px solid #cfd8e3; border-radius: 7px; }
     .pagination .current { padding: 6px 11px; border-radius: 7px; background: #12314f; color: #fff; border: 1px solid #12314f; font-weight: 600; }
     footer { text-align: center; color: #7a8797; font-size: 12px; margin: 18px 0 30px; }
+    .views { margin-top: 10px; font-size: 13px; }
+    .views a { color: #9fc0e6; }
+    .note { background: #fff8e5; border: 1px solid #f0d999; color: #7a5b12; border-radius: 8px; padding: 10px 12px; font-size: 13px; margin-bottom: 16px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+    .invoice-card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 16px; background: #fbfcfe; }
+    .invoice-card .card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .invoice-card .inv-num { font-weight: 700; font-size: 15px; color: #12314f; }
+    .badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: #fdecec; color: #b42318; border: 1px solid #f5c2c0; }
+    .invoice-card dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 13px; }
+    .invoice-card dt { color: #7a8797; }
+    .invoice-card dd { margin: 0; }
 </style>
   </head>
   <body>
     <header>
       <h1>Acme Test Portal</h1>
       <p>Demo portal for ReFlow end-to-end runs &mdash; invoices with downloadable PDFs</p>
+      <nav class="views">
+        <a href="cards.html">Card view (no download buttons) &rarr;</a>
+      </nav>
     </header>
     <main>
       <table id="invoices">

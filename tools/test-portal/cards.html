@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Acme Test Portal &mdash; Invoice Cards (no download)</title>
+    <style>
+    :root { font-family: system-ui, 'Segoe UI', Roboto, Arial, sans-serif; }
+    body { margin: 0; background: #f6f7f9; color: #1c2733; }
+    header { background: #12314f; color: #fff; padding: 18px 28px; }
+    header h1 { margin: 0; font-size: 20px; }
+    header p { margin: 4px 0 0; opacity: .75; font-size: 13px; }
+    main { max-width: 860px; margin: 28px auto; background: #fff; border: 1px solid #dde3ea; border-radius: 10px; padding: 22px 26px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e6ebf1; }
+    th { color: #5b6b7d; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+    a { color: #1466c2; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .pagination { margin-top: 18px; display: flex; gap: 8px; align-items: center; font-size: 14px; }
+    .pagination a { padding: 6px 11px; border: 1px solid #cfd8e3; border-radius: 7px; }
+    .pagination .current { padding: 6px 11px; border-radius: 7px; background: #12314f; color: #fff; border: 1px solid #12314f; font-weight: 600; }
+    footer { text-align: center; color: #7a8797; font-size: 12px; margin: 18px 0 30px; }
+    .views { margin-top: 10px; font-size: 13px; }
+    .views a { color: #9fc0e6; }
+    .note { background: #fff8e5; border: 1px solid #f0d999; color: #7a5b12; border-radius: 8px; padding: 10px 12px; font-size: 13px; margin-bottom: 16px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+    .invoice-card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 16px; background: #fbfcfe; }
+    .invoice-card .card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .invoice-card .inv-num { font-weight: 700; font-size: 15px; color: #12314f; }
+    .badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: #fdecec; color: #b42318; border: 1px solid #f5c2c0; }
+    .invoice-card dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 13px; }
+    .invoice-card dt { color: #7a8797; }
+    .invoice-card dd { margin: 0; }
+</style>
+  </head>
+  <body>
+    <header>
+      <h1>Acme Test Portal</h1>
+      <p>Invoice cards &mdash; this view has no download button</p>
+      <nav class="views">
+        <a href="index.html">&larr; Table view (with PDF downloads)</a>
+      </nav>
+    </header>
+    <main>
+      <div class="note">
+        This view intentionally has <strong>no download buttons</strong> &mdash; invoice data only.
+        Capture a field on the first card and ReFlow should iterate every card and export a spreadsheet.
+      </div>
+      <div class="cards">
+        <article class="invoice-card" data-invoice="INV-0001">
+          <div class="card-top">
+            <span class="inv-num">INV-0001</span>
+            <span class="badge">No download</span>
+          </div>
+          <dl>
+            <dt>Date</dt><dd class="inv-date">2026-09-01</dd>
+            <dt>Amount</dt><dd class="inv-amount">$1,000.00</dd>
+            <dt>Status</dt><dd class="inv-status">Awaiting document upload</dd>
+          </dl>
+        </article>
+        <article class="invoice-card" data-invoice="INV-0002">
+          <div class="card-top">
+            <span class="inv-num">INV-0002</span>
+            <span class="badge">No download</span>
+          </div>
+          <dl>
+            <dt>Date</dt><dd class="inv-date">2026-09-04</dd>
+            <dt>Amount</dt><dd class="inv-amount">$1,137.97</dd>
+            <dt>Status</dt><dd class="inv-status">Awaiting document upload</dd>
+          </dl>
+        </article>
+        <article class="invoice-card" data-invoice="INV-0003">
+          <div class="card-top">
+            <span class="inv-num">INV-0003</span>
+            <span class="badge">No download</span>
+          </div>
+          <dl>
+            <dt>Date</dt><dd class="inv-date">2026-09-07</dd>
+            <dt>Amount</dt><dd class="inv-amount">$1,274.94</dd>
+            <dt>Status</dt><dd class="inv-status">Awaiting document upload</dd>
+          </dl>
+        </article>
+        <article class="invoice-card" data-invoice="INV-0004">
+          <div class="card-top">
+            <span class="inv-num">INV-0004</span>
+            <span class="badge">No download</span>
+          </div>
+          <dl>
+            <dt>Date</dt><dd class="inv-date">2026-09-10</dd>
+            <dt>Amount</dt><dd class="inv-amount">$1,411.91</dd>
+            <dt>Status</dt><dd class="inv-status">Awaiting document upload</dd>
+          </dl>
+        </article>
+        <article class="invoice-card" data-invoice="INV-0005">
+          <div class="card-top">
+            <span class="inv-num">INV-0005</span>
+            <span class="badge">No download</span>
+          </div>
+          <dl>
+            <dt>Date</dt><dd class="inv-date">2026-09-13</dd>
+            <dt>Amount</dt><dd class="inv-amount">$1,548.88</dd>
+            <dt>Status</dt><dd class="inv-status">Awaiting document upload</dd>
+          </dl>
+        </article>
+        <article class="invoice-card" data-invoice="INV-0006">
+          <div class="card-top">
+            <span class="inv-num">INV-0006</span>
+            <span class="badge">No download</span>
+          </div>
+          <dl>
+            <dt>Date</dt><dd class="inv-date">2026-09-16</dd>
+            <dt>Amount</dt><dd class="inv-amount">$1,685.85</dd>
+            <dt>Status</dt><dd class="inv-status">Awaiting document upload</dd>
+          </dl>
+        </article>
+        <article class="invoice-card" data-invoice="INV-0007">
+          <div class="card-top">
+            <span class="inv-num">INV-0007</span>
+            <span class="badge">No download</span>
+          </div>
+          <dl>
+            <dt>Date</dt><dd class="inv-date">2026-09-19</dd>
+            <dt>Amount</dt><dd class="inv-amount">$1,822.82</dd>
+            <dt>Status</dt><dd class="inv-status">Awaiting document upload</dd>
+          </dl>
+        </article>
+        <article class="invoice-card" data-invoice="INV-0008">
+          <div class="card-top">
+            <span class="inv-num">INV-0008</span>
+            <span class="badge">No download</span>
+          </div>
+          <dl>
+            <dt>Date</dt><dd class="inv-date">2026-09-22</dd>
+            <dt>Amount</dt><dd class="inv-amount">$1,959.79</dd>
+            <dt>Status</dt><dd class="inv-status">Awaiting document upload</dd>
+          </dl>
+        </article>
+        <article class="invoice-card" data-invoice="INV-0009">
+          <div class="card-top">
+            <span class="inv-num">INV-0009</span>
+            <span class="badge">No download</span>
+          </div>
+          <dl>
+            <dt>Date</dt><dd class="inv-date">2026-09-25</dd>
+            <dt>Amount</dt><dd class="inv-amount">$2,096.76</dd>
+            <dt>Status</dt><dd class="inv-status">Awaiting document upload</dd>
+          </dl>
+        </article>
+        <article class="invoice-card" data-invoice="INV-0010">
+          <div class="card-top">
+            <span class="inv-num">INV-0010</span>
+            <span class="badge">No download</span>
+          </div>
+          <dl>
+            <dt>Date</dt><dd class="inv-date">2026-10-01</dd>
+            <dt>Amount</dt><dd class="inv-amount">$2,233.73</dd>
+            <dt>Status</dt><dd class="inv-status">Awaiting document upload</dd>
+          </dl>
+        </article>
+        <article class="invoice-card" data-invoice="INV-0011">
+          <div class="card-top">
+            <span class="inv-num">INV-0011</span>
+            <span class="badge">No download</span>
+          </div>
+          <dl>
+            <dt>Date</dt><dd class="inv-date">2026-10-04</dd>
+            <dt>Amount</dt><dd class="inv-amount">$2,370.70</dd>
+            <dt>Status</dt><dd class="inv-status">Awaiting document upload</dd>
+          </dl>
+        </article>
+        <article class="invoice-card" data-invoice="INV-0012">
+          <div class="card-top">
+            <span class="inv-num">INV-0012</span>
+            <span class="badge">No download</span>
+          </div>
+          <dl>
+            <dt>Date</dt><dd class="inv-date">2026-10-07</dd>
+            <dt>Amount</dt><dd class="inv-amount">$2,507.67</dd>
+            <dt>Status</dt><dd class="inv-status">Awaiting document upload</dd>
+          </dl>
+        </article>
+        <article class="invoice-card" data-invoice="INV-0013">
+          <div class="card-top">
+            <span class="inv-num">INV-0013</span>
+            <span class="badge">No download</span>
+          </div>
+          <dl>
+            <dt>Date</dt><dd class="inv-date">2026-10-10</dd>
+            <dt>Amount</dt><dd class="inv-amount">$2,644.64</dd>
+            <dt>Status</dt><dd class="inv-status">Awaiting document upload</dd>
+          </dl>
+        </article>
+        <article class="invoice-card" data-invoice="INV-0014">
+          <div class="card-top">
+            <span class="inv-num">INV-0014</span>
+            <span class="badge">No download</span>
+          </div>
+          <dl>
+            <dt>Date</dt><dd class="inv-date">2026-10-13</dd>
+            <dt>Amount</dt><dd class="inv-amount">$2,781.61</dd>
+            <dt>Status</dt><dd class="inv-status">Awaiting document upload</dd>
+          </dl>
+        </article>
+        <article class="invoice-card" data-invoice="INV-0015">
+          <div class="card-top">
+            <span class="inv-num">INV-0015</span>
+            <span class="badge">No download</span>
+          </div>
+          <dl>
+            <dt>Date</dt><dd class="inv-date">2026-10-16</dd>
+            <dt>Amount</dt><dd class="inv-amount">$2,918.58</dd>
+            <dt>Status</dt><dd class="inv-status">Awaiting document upload</dd>
+          </dl>
+        </article>
+        <article class="invoice-card" data-invoice="INV-0016">
+          <div class="card-top">
+            <span class="inv-num">INV-0016</span>
+            <span class="badge">No download</span>
+          </div>
+          <dl>
+            <dt>Date</dt><dd class="inv-date">2026-10-19</dd>
+            <dt>Amount</dt><dd class="inv-amount">$3,055.55</dd>
+            <dt>Status</dt><dd class="inv-status">Awaiting document upload</dd>
+          </dl>
+        </article>
+        <article class="invoice-card" data-invoice="INV-0017">
+          <div class="card-top">
+            <span class="inv-num">INV-0017</span>
+            <span class="badge">No download</span>
+          </div>
+          <dl>
+            <dt>Date</dt><dd class="inv-date">2026-10-22</dd>
+            <dt>Amount</dt><dd class="inv-amount">$3,192.52</dd>
+            <dt>Status</dt><dd class="inv-status">Awaiting document upload</dd>
+          </dl>
+        </article>
+        <article class="invoice-card" data-invoice="INV-0018">
+          <div class="card-top">
+            <span class="inv-num">INV-0018</span>
+            <span class="badge">No download</span>
+          </div>
+          <dl>
+            <dt>Date</dt><dd class="inv-date">2026-10-25</dd>
+            <dt>Amount</dt><dd class="inv-amount">$3,329.49</dd>
+            <dt>Status</dt><dd class="inv-status">Awaiting document upload</dd>
+          </dl>
+        </article>
+      </div>
+    </main>
+    <footer>18 invoice cards &mdash; data only, no files</footer>
+  </body>
+</html>

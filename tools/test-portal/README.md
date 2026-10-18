@@ -18,6 +18,11 @@ Then open <http://localhost:8090/>
 - `index.html`, `page2.html`, `page3.html` — 18 invoices, 6 per page
   - each row links to `pdfs/INV-XXXX.pdf` ("Download PDF")
   - pagination: numbered links plus a `rel="next"` "Next" link
+- `cards.html` — the same 18 invoices as **invoice cards with no download
+  button** (`article.invoice-card`, fields `.inv-num`, `.inv-date`,
+  `.inv-amount`, `.inv-status`)
+  - the "portal has no download button" scenario: capture a field on one
+    card and the run should iterate every card and export a spreadsheet
 - `pdfs/INV-0001.pdf` … `pdfs/INV-0018.pdf` — small valid PDFs
 - PDFs are served with `Content-Disposition: attachment`, so browsers
   download them (which is what the ReFlow worker collects as artifacts)
