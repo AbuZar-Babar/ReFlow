@@ -76,6 +76,7 @@ export default function RunnersPage() {
   const [workers, setWorkers] = useState<ConnectedWorker[]>([]);
   const [loadingWorkers, setLoadingWorkers] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [stoppingRunId, setStoppingRunId] = useState<string | null>(null);
   const [, setActiveRunsMap] = useState<Record<string, DrawerRunItem>>({});
   const [, setTotalClaimsCount] = useState<number>(0);
   const [, setRealtimeConnected] = useState<boolean>(false);
@@ -525,6 +526,23 @@ export default function RunnersPage() {
     }
   };
 
+  // Stop an active run and surface the outcome (never fail silently)
+  const handleStopRun = async (runId: string) => {
+    setStoppingRunId(runId);
+    try {
+      const ok = await stopActiveRun(runId);
+      if (ok) {
+        setActionSuccessNotice('Run cancellation requested — the worker will stop when it next checks in.');
+        setTimeout(() => setActionSuccessNotice(null), 6000);
+      } else {
+        setActionErrorNotice('Could not cancel the active run. It may still be executing — please retry.');
+        setTimeout(() => setActionErrorNotice(null), 6000);
+      }
+    } finally {
+      setStoppingRunId(null);
+    }
+  };
+
   // Format live heartbeat counter
   const formatHeartbeat = (isoDate: string | null | undefined, currentNow: number) => {
     if (!isoDate) return 'Awaiting initial ping';
@@ -840,11 +858,16 @@ No desktop has checked in recently. Open ReFlow Desktop, paste the workspace tok
                         </button>
 
                         <button
-                          onClick={() => stopActiveRun(worker.activeRun!.id)}
-                          className="p-1 hover:bg-rose-500/20 text-rose-400 rounded-md transition-colors"
+                          onClick={() => void handleStopRun(worker.activeRun!.id)}
+                          disabled={stoppingRunId === worker.activeRun.id}
+                          className="p-1 hover:bg-rose-500/20 text-rose-400 rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                           title="Stop Active Run"
                         >
-                          <StopCircle className="w-4 h-4" />
+                          {stoppingRunId === worker.activeRun.id ? (
+                            <LoaderCircle className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <StopCircle className="w-4 h-4" />
+                          )}
                         </button>
                       </div>
                     </div>
