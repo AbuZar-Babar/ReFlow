@@ -10,6 +10,7 @@ import {
   FileText,
   Cpu,
   Settings,
+  HelpCircle,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
@@ -50,6 +51,7 @@ export function Sidebar({ isRunnerOnline = false }: SidebarProps) {
     { label: 'Run history', href: '/dashboard/runs', icon: Activity, exact: false },
     { label: 'Files & results', href: '/dashboard/artifacts', icon: FileText, exact: false },
     { label: 'Desktop connection', href: '/dashboard/runners', icon: Cpu, exact: false },
+    { label: 'Getting started', href: '/dashboard/getting-started', icon: HelpCircle, exact: false },
     { label: 'Settings', href: '/dashboard/settings', icon: Settings, exact: false }
   ];
 
