@@ -61,6 +61,13 @@ export interface ExecutionRun {
   started_at: string;
   completed_at?: string | null;
   error_summary?: string | null;
+  // Run-level execution config (persisted per run so concurrent runs of the
+  // same workflow do not share settings through the workflow definition).
+  mode?: string | null;
+  is_loop?: boolean | null;
+  loop_step_index?: number | null;
+  loop_limit?: number | null;
+  item_filter?: unknown;
 }
 
 export interface RunArtifact {

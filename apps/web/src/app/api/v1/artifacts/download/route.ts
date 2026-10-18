@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRunnerOrUser } from '@/lib/auth/runner-auth';
 
+function contentDisposition(fileName: string): string {
+  const safeName = fileName || 'artifact';
+  const asciiFallback = safeName.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_');
+  return `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(safeName)}`;
+}
+
 export async function GET(request: NextRequest) {
   const auth = await authenticateRunnerOrUser(request);
   if (!auth.success) {
@@ -41,47 +47,34 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Attempt to download file from Supabase storage bucket
+  // Stream the real bytes from the private bucket. If the object is missing we
+  // return an honest 404 — never a placeholder file pretending to be the artifact.
   const cleanStoragePath = cloudPath.replace(/^wf_artifacts\//, '');
   try {
     const { data: fileBlob, error: downloadError } = await supabase.storage
       .from('wf_artifacts')
       .download(cleanStoragePath);
 
-    if (!downloadError && fileBlob) {
-      const buffer = Buffer.from(await fileBlob.arrayBuffer());
-      return new Response(buffer, {
-        status: 200,
-        headers: {
-          'Content-Type': fileBlob.type || 'application/octet-stream',
-          'Content-Disposition': `attachment; filename="${encodeURIComponent(artifact.file_name)}"`,
-          'Content-Length': String(buffer.length),
+    if (downloadError || !fileBlob) {
+      return NextResponse.json(
+        {
+          error: `Artifact file not found in cloud storage${downloadError?.message ? `: ${downloadError.message}` : ''}`,
         },
-      });
+        { status: 404 }
+      );
     }
 
-    // Try signed URL redirect
-    const { data: signedData } = await supabase.storage
-      .from('wf_artifacts')
-      .createSignedUrl(cleanStoragePath, 300);
-
-    if (signedData?.signedUrl) {
-      return NextResponse.redirect(signedData.signedUrl);
-    }
+    const buffer = Buffer.from(await fileBlob.arrayBuffer());
+    return new Response(buffer, {
+      status: 200,
+      headers: {
+        'Content-Type': fileBlob.type || 'application/octet-stream',
+        'Content-Disposition': contentDisposition(artifact.file_name),
+        'Content-Length': String(buffer.length),
+      },
+    });
   } catch (storageErr) {
-    console.warn('Storage download fallback:', storageErr);
+    const message = storageErr instanceof Error ? storageErr.message : 'Storage download failed';
+    return NextResponse.json({ error: message }, { status: 502 });
   }
-
-  // Fallback response for mock or simulated cloud environments
-  const fallbackText = `ReFlow Cloud Artifact Export\nFile: ${artifact.file_name}\nSHA-256: ${artifact.sha256_hash}\nSize: ${artifact.file_size_bytes || 0} bytes\nSynced Path: ${cloudPath}\n`;
-  const fallbackBuffer = Buffer.from(fallbackText, 'utf-8');
-
-  return new Response(fallbackBuffer, {
-    status: 200,
-    headers: {
-      'Content-Type': 'application/octet-stream',
-      'Content-Disposition': `attachment; filename="${encodeURIComponent(artifact.file_name)}"`,
-      'Content-Length': String(fallbackBuffer.length),
-    },
-  });
 }

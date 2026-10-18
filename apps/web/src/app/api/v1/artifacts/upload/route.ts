@@ -74,51 +74,72 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!fileBuffer || fileBuffer.length === 0) {
+      return NextResponse.json(
+        { error: 'No file data provided. Send file_data (base64) or a multipart "file" part.' },
+        { status: 400 }
+      );
+    }
+
     const cloudPath = `${orgId}/${runId}/${fileName}`;
-    let uploadSuccess = false;
 
-    if (fileBuffer) {
-      try {
-        const { error: uploadErr } = await supabase.storage
-          .from('wf_artifacts')
-          .upload(cloudPath, fileBuffer, {
-            contentType: 'application/octet-stream',
-            upsert: true,
-          });
+    // 1. Store the real bytes in the private bucket. If this fails we must NOT
+    // report success: the runner falls back to POST /api/v1/artifacts (with
+    // file_data) or registers the artifact as local-only.
+    const { error: uploadErr } = await supabase.storage
+      .from('wf_artifacts')
+      .upload(cloudPath, fileBuffer, {
+        contentType: 'application/octet-stream',
+        upsert: true,
+      });
 
-        if (!uploadErr) {
-          uploadSuccess = true;
-        }
-      } catch (storageErr) {
-        console.warn('Supabase storage upload error:', storageErr);
-      }
+    if (uploadErr) {
+      return NextResponse.json(
+        {
+          success: false,
+          uploaded_to_storage: false,
+          error: `Storage upload failed: ${uploadErr.message}`,
+        },
+        { status: 502 }
+      );
     }
 
     const finalCloudPath = `wf_artifacts/${cloudPath}`;
 
-    // Optionally update or create artifact record
+    // 2. Record the artifact (upsert keyed on run_id + sha256_hash, backed by
+    // the uq_wf_run_artifacts_run_sha256 unique index).
+    let artifactRecorded = false;
     if (sha256Hash) {
-      try {
-        await supabase
-          .from('wf_run_artifacts')
-          .upsert(
-            {
-              run_id: runId,
-              file_name: fileName,
-              file_size_bytes: fileSize,
-              sha256_hash: sha256Hash,
-              cloud_storage_path: finalCloudPath,
-              item_metadata: {
-                uploaded_to_cloud: true,
-                uploaded_at: new Date().toISOString(),
-                ...(storagePath ? { storage_path: storagePath } : {}),
-              },
+      const { error: recordErr } = await supabase
+        .from('wf_run_artifacts')
+        .upsert(
+          {
+            run_id: runId,
+            file_name: fileName,
+            file_size_bytes: fileSize,
+            sha256_hash: sha256Hash,
+            cloud_storage_path: finalCloudPath,
+            item_metadata: {
+              uploaded_to_cloud: true,
+              uploaded_at: new Date().toISOString(),
+              ...(storagePath ? { storage_path: storagePath } : {}),
             },
-            { onConflict: 'run_id,sha256_hash' }
-          );
-      } catch {
-        // ignore upsert error if table/record not ready
+          },
+          { onConflict: 'run_id,sha256_hash' }
+        );
+
+      if (recordErr) {
+        return NextResponse.json(
+          {
+            success: false,
+            uploaded_to_storage: true,
+            cloud_storage_path: finalCloudPath,
+            error: `Artifact record failed: ${recordErr.message}`,
+          },
+          { status: 500 }
+        );
       }
+      artifactRecorded = true;
     }
 
     return NextResponse.json(
@@ -128,7 +149,8 @@ export async function POST(request: NextRequest) {
         path: finalCloudPath,
         file_name: fileName,
         file_size_bytes: fileSize,
-        uploaded_to_storage: uploadSuccess,
+        uploaded_to_storage: true,
+        artifact_recorded: artifactRecorded,
       },
       { status: 201 }
     );

@@ -197,6 +197,14 @@ export async function POST(request: NextRequest) {
         items_processed: 0,
         items_downloaded: 0,
         started_at: new Date().toISOString(),
+        // Run-level execution config (C-07): the runner reads these directly
+        // off the run row, so concurrent runs cannot clobber each other via
+        // the shared workflow definition.
+        mode,
+        is_loop: isLoop,
+        loop_step_index: loopStepIndex,
+        loop_limit: loopLimit,
+        item_filter: itemFilter || null,
       })
       .select()
       .single();

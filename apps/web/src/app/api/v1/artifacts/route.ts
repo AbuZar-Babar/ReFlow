@@ -115,41 +115,51 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Canonical storage layout is wf_artifacts/<org_id>/<run_id>/<file_name>.
+    // Older runner builds may send a path without the org prefix (which would
+    // 404 on download), so normalize anything that does not match.
+    const canonicalCloudPath = `wf_artifacts/${orgId}/${run_id}/${file_name}`;
+
     let finalCloudStoragePath = cloud_storage_path || null;
-    if (body.file_data && !finalCloudStoragePath) {
-      try {
-        const buffer = Buffer.from(body.file_data, 'base64');
-        const uploadPath = `${orgId}/${run_id}/${file_name}`;
-        const { data: uploadData, error: uploadErr } = await supabase.storage
-          .from('wf_artifacts')
-          .upload(uploadPath, buffer, {
-            contentType: 'application/octet-stream',
-            upsert: true,
-          });
-        if (!uploadErr && uploadData) {
-          finalCloudStoragePath = uploadData.path;
-        } else {
-          finalCloudStoragePath = `wf_artifacts/${uploadPath}`;
-        }
-      } catch {
-        finalCloudStoragePath = `wf_artifacts/${orgId}/${run_id}/${file_name}`;
+    if (finalCloudStoragePath && !finalCloudStoragePath.startsWith(`wf_artifacts/${orgId}/`)) {
+      finalCloudStoragePath = canonicalCloudPath;
+    }
+
+    if (body.file_data) {
+      const buffer = Buffer.from(body.file_data, 'base64');
+      const uploadPath = `${orgId}/${run_id}/${file_name}`;
+      const { error: uploadErr } = await supabase.storage
+        .from('wf_artifacts')
+        .upload(uploadPath, buffer, {
+          contentType: 'application/octet-stream',
+          upsert: true,
+        });
+      if (uploadErr) {
+        // Keep the artifact visible as local-only instead of claiming a cloud
+        // copy that was never stored.
+        finalCloudStoragePath = null;
+      } else {
+        finalCloudStoragePath = `wf_artifacts/${uploadPath}`;
       }
     }
 
     const { data: newArtifact, error: insertError } = await supabase
       .from('wf_run_artifacts')
-      .insert({
-        run_id,
-        file_name,
-        file_size_bytes: file_size_bytes !== undefined ? Number(file_size_bytes) : null,
-        sha256_hash,
-        cloud_storage_path: finalCloudStoragePath,
-        item_metadata: {
-          ...(typeof item_metadata === 'object' && item_metadata !== null ? item_metadata : {}),
-          ...(body.storage_path ? { storage_path: body.storage_path } : {}),
+      .upsert(
+        {
+          run_id,
+          file_name,
+          file_size_bytes: file_size_bytes !== undefined ? Number(file_size_bytes) : null,
+          sha256_hash,
+          cloud_storage_path: finalCloudStoragePath,
+          item_metadata: {
+            ...(typeof item_metadata === 'object' && item_metadata !== null ? item_metadata : {}),
+            ...(body.storage_path ? { storage_path: body.storage_path } : {}),
+          },
+          synced_to_drive: synced_to_drive !== undefined ? Boolean(synced_to_drive) : false,
         },
-        synced_to_drive: synced_to_drive !== undefined ? Boolean(synced_to_drive) : false,
-      })
+        { onConflict: 'run_id,sha256_hash' }
+      )
       .select()
       .single();
 
