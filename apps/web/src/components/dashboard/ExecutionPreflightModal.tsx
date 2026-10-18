@@ -21,6 +21,7 @@ import {
 import { Workflow } from '@/lib/types/database';
 import { DrawerRunItem } from './RunDetailsDrawer';
 import { useDashboard } from '@/context/DashboardContext';
+import { deriveLoopSignals } from '@/lib/workflows/loop-signals';
 
 interface ExecutionPreflightModalProps {
   isOpen: boolean;
@@ -338,9 +339,7 @@ export function ExecutionPreflightModal({
 }: ExecutionPreflightModalProps) {
   const { orgId, isRunnerOnline, refreshDashboard, openRunDetails } = useDashboard();
   const [execMode, setExecMode] = useState<'single' | 'loop'>('single');
-  const [itemMode, setItemMode] = useState<'new' | 'all' | 'old'>('new');
   const [maxItems, setMaxItems] = useState<string>('');
-  const [paginate, setPaginate] = useState<boolean>(true);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -371,20 +370,20 @@ export function ExecutionPreflightModal({
   useEffect(() => {
     if (workflow) {
       const steps = getWorkflowSteps(workflow);
+      // Shared derivation: this is what keeps "recorded as loop" from silently
+      // running as a single pass (recorder metadata + extraction steps +
+      // per-step flags all feed the same answer).
+      const loopSignals = deriveLoopSignals(workflow.workflow_definition, steps);
       const isConfiguredAsLoop = Boolean(
-        workflow.workflow_definition?.isLoop === true ||
-        (workflow.workflow_definition as any)?.mode === 'loop' ||
+        loopSignals.isLoop ||
         (workflow as any).isLoop === true ||
-        (workflow as any).mode === 'loop' ||
-        steps.some((s: any) => s && (s.role === 'LOOP' || s.isLoopCandidate || s.isLoop || s.loopMode === 'sequential_iteration'))
+        (workflow as any).mode === 'loop'
       );
       if (isConfiguredAsLoop) {
         setExecMode('loop');
       }
 
-      const savedLoopIdx = workflow.workflow_definition?.loopStepIndex ??
-        (workflow.workflow_definition as any)?.settings?.loopStepIndex ??
-        (workflow as any).loopStepIndex;
+      const savedLoopIdx = loopSignals.loopStepIndex ?? (workflow as any).loopStepIndex;
       const bestCandidate = detectLoopCandidate(steps, savedLoopIdx);
       setAutoDetectedIndex(bestCandidate);
       setLoopStepIndex(bestCandidate);
@@ -508,16 +507,7 @@ export function ExecutionPreflightModal({
     }
   };
 
-  const applyDatePreset = (preset: 'overdue' | 'upcoming' | 'today' | 'in_folder' | 'not_in_folder') => {
-    if (preset === 'in_folder') {
-      setItemMode('old');
-      return;
-    }
-    if (preset === 'not_in_folder') {
-      setItemMode('new');
-      return;
-    }
-
+  const applyDatePreset = (preset: 'overdue' | 'upcoming' | 'today') => {
     const todayIso = getTodayIsoDate();
     if (preset === 'overdue') {
       handleUpdateCondition(0, {
@@ -764,8 +754,6 @@ export function ExecutionPreflightModal({
           status: 'pending',
           total_items_discovered: itemsLimit || 0,
           mode: execMode,
-          item_mode: itemMode,
-          paginate: paginate,
           isLoop: execMode === 'loop',
           loopStepIndex: execMode === 'loop' ? loopStepIndex : null,
           loopLimit: execMode === 'loop' && itemsLimit > 0 ? itemsLimit : null,
@@ -934,56 +922,17 @@ export function ExecutionPreflightModal({
                   <span>Batch Iteration Limits</span>
                 </div>
 
-                <div>
-                  <label className="block text-xs text-slate-300 mb-1 font-medium">Download & Sync Strategy</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { id: 'new', label: 'Skip Existing', desc: 'New files only' },
-                      { id: 'all', label: 'All Items', desc: 'Process all rows' },
-                      { id: 'old', label: 'Re-download', desc: 'Overwrite files' }
-                    ].map((opt) => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => setItemMode(opt.id as 'new'|'all'|'old')}
-                        className={`p-2.5 rounded-lg border text-center transition cursor-pointer ${
-                          itemMode === opt.id
-                            ? 'border-cyan-500/50 bg-cyan-500/20 text-white ring-1 ring-cyan-500/30'
-                            : 'border-slate-800 bg-slate-900 text-slate-400 hover:border-slate-700'
-                        }`}
-                      >
-                        <div className="text-xs font-semibold">{opt.label}</div>
-                        <div className="text-[10px] text-slate-500 mt-0.5">{opt.desc}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 pt-1">
-                  <div>
-                    <label htmlFor="inputMaxItems" className="block text-xs text-slate-300 mb-1 font-medium">Max Items Limit</label>
-                    <input
-                      id="inputMaxItems"
-                      type="number"
-                      min="1"
-                      placeholder="All items (no limit)"
-                      value={maxItems}
-                      onChange={(e) => setMaxItems(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2 pt-6">
-                    <input
-                      type="checkbox"
-                      id="chkPaginate"
-                      checked={paginate}
-                      onChange={(e) => setPaginate(e.target.checked)}
-                      className="h-4 w-4 rounded border-slate-800 bg-slate-900 text-cyan-500 focus:ring-cyan-500/20 cursor-pointer"
-                    />
-                    <label htmlFor="chkPaginate" className="text-xs text-slate-300 select-none cursor-pointer">
-                      Multi-page pagination
-                    </label>
-                  </div>
+                <div className="pt-1">
+                  <label htmlFor="inputMaxItems" className="block text-xs text-slate-300 mb-1 font-medium">Max Items Limit</label>
+                  <input
+                    id="inputMaxItems"
+                    type="number"
+                    min="1"
+                    placeholder="All items (no limit)"
+                    value={maxItems}
+                    onChange={(e) => setMaxItems(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition"
+                  />
                 </div>
               </div>
 
@@ -1160,30 +1109,6 @@ export function ExecutionPreflightModal({
                               title="Due date is today"
                             >
                               Due Today
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => applyDatePreset('not_in_folder')}
-                              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition cursor-pointer ${
-                                itemMode === 'new'
-                                  ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300 font-bold'
-                                  : 'border-slate-800 bg-slate-900 text-slate-400 hover:text-white'
-                              }`}
-                              title="Skip items already in folder, process new only"
-                            >
-                              New (Not in folder)
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => applyDatePreset('in_folder')}
-                              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition cursor-pointer ${
-                                itemMode === 'old'
-                                  ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300 font-bold'
-                                  : 'border-slate-800 bg-slate-900 text-slate-400 hover:text-white'
-                              }`}
-                              title="Process only items already downloaded in folder"
-                            >
-                              Already in Folder
                             </button>
                           </div>
                         </div>
