@@ -1,6 +1,8 @@
-# ReFlow — AI Implementation Rules (Gemini Flash)
+# ReFlow — AI Implementation Rules
 
-These rules apply to Gemini Flash implementing changes in the ReFlow codebase. Flash reads this file automatically.
+These rules apply to any AI agent implementing changes in the ReFlow codebase. Agents read this file automatically.
+
+ReFlow is a three-tier RPA SaaS (Next.js cloud control plane, Electron desktop worker, CDP automation engine) built by AbuZar and Alina. Planning, implementation, and review roles are defined in [docs/agent-context/AI_WORKFLOW.md](docs/agent-context/AI_WORKFLOW.md).
 
 ## Operating Modes
 
