@@ -364,6 +364,7 @@ export default function DashboardOverviewPage() {
       <SetupChecklist
         workflowCount={stats.totalWorkflows}
         completedRunCount={completedRunCount}
+        isLoading={loading}
       />
 
       {/* Task-first entry point; existing workflow creation behavior is preserved. */}

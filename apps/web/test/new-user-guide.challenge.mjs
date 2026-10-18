@@ -35,9 +35,10 @@ describe('Guided setup for new users', () => {
     assert.match(src, /const allDone = doneCount === total/);
     assert.match(
       src,
-      /if \(!mounted \|\| dismissed \|\| allDone\) return null;/,
+      /if \(!mounted \|\| isLoading \|\| dismissed \|\| allDone\) return null;/,
       'complete or dismissed checklists must not render'
     );
+    assert.match(src, /isLoading = false/, 'checklist must wait for real dashboard counts');
     assert.match(src, /aria-label="Hide the setup checklist"/);
     assert.match(src, /wf_setup_checklist_dismissed/);
     assert.match(src, /wf_setup_download_clicked/);
@@ -60,6 +61,7 @@ describe('Guided setup for new users', () => {
     assert.match(src, /import \{ SetupChecklist \} from '@\/components\/dashboard\/SetupChecklist'/);
     assert.match(src, /workflowCount=\{stats\.totalWorkflows\}/);
     assert.match(src, /completedRunCount=\{completedRunCount\}/);
+    assert.match(src, /isLoading=\{loading\}/, 'checklist must not flash before data loads');
 
     const counter = src.match(/const completedRunCount = useMemo\(\(\) => \{[\s\S]*?\}, \[allRuns\]\);/);
     assert.ok(counter, 'completedRunCount must be derived from loaded runs');

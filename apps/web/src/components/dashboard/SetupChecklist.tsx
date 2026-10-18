@@ -23,6 +23,7 @@ const WINDOWS_DOWNLOAD_HREF = '/api/v1/runners/download?type=installer&os=window
 interface SetupChecklistProps {
   workflowCount: number;
   completedRunCount: number;
+  isLoading?: boolean;
 }
 
 interface SetupStep {
@@ -34,7 +35,11 @@ interface SetupStep {
   action: { label: string; href: string } | { label: string; download: true };
 }
 
-export function SetupChecklist({ workflowCount, completedRunCount }: SetupChecklistProps) {
+export function SetupChecklist({
+  workflowCount,
+  completedRunCount,
+  isLoading = false
+}: SetupChecklistProps) {
   const { orgId, isRunnerOnline } = useDashboard();
   const [mounted, setMounted] = useState(false);
   const [downloadClicked, setDownloadClicked] = useState(false);
@@ -110,8 +115,10 @@ export function SetupChecklist({ workflowCount, completedRunCount }: SetupCheckl
   const total = steps.length;
   const allDone = doneCount === total;
 
-  // Hide on its own once every step is genuinely complete.
-  if (!mounted || dismissed || allDone) return null;
+  // Hide on its own once every step is genuinely complete. While the dashboard is
+  // still loading the counts read as zero, so an established workspace would flash
+  // an irrelevant checklist — stay hidden until real numbers exist.
+  if (!mounted || isLoading || dismissed || allDone) return null;
 
   return (
     <section
