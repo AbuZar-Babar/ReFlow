@@ -38,6 +38,9 @@ with a lowercase `'loop'` check — so recorded table scrapes pre-filled as
       (they were sent but read by nothing).
 - [x] Fixture: `tools/test-portal/cards.html` — 18 invoice cards with **no
       download button** for the capture-field scenario.
+- [x] Live API smoke on the test project — 22/22 checks: save normalization,
+      pre-flight dispatch, derived dispatch, no over-flagging, cleanup
+      (`apps/web/test/loop-config.smoke.mjs`).
 - [ ] Verify live on the fixture (below), then merge to `main-refactor`.
 
 ## E2E dry run (fixture portal)
