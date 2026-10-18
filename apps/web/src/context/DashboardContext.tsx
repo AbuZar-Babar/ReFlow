@@ -395,7 +395,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   const refreshDashboard = async () => {
     setIsRefreshing(true);
-    await fetchDashboardContext();
+    try {
+      await fetchDashboardContext();
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const openRunDetails = (run: DrawerRunItem) => {
