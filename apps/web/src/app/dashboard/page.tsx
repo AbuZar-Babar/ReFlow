@@ -15,6 +15,7 @@ import { createClient } from '@/lib/supabase/client';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { TwoFactorBanner, ActionRequiredRunInfo } from '@/components/dashboard/TwoFactorBanner';
 import { CreatePortalModal } from '@/components/dashboard/CreatePortalModal';
+import { SetupChecklist } from '@/components/dashboard/SetupChecklist';
 import { DrawerRunItem } from '@/components/dashboard/RunDetailsDrawer';
 import { Workflow as WorkflowModel, RunStatus } from '@/lib/types/database';
 
@@ -297,6 +298,14 @@ export default function DashboardOverviewPage() {
   const successfulPath = chartData.map((day, index) => chartX(index) + ',' + chartY(day.successful)).join(' ');
   const failedPath = chartData.map((day, index) => chartX(index) + ',' + chartY(day.failed)).join(' ');
 
+  // Drives the first-run checklist: a completed run is the last thing a new user needs.
+  const completedRunCount = useMemo(() => {
+    return allRuns.filter((run) => {
+      const st = String(run.status).toLowerCase();
+      return st === 'completed' || st === 'success';
+    }).length;
+  }, [allRuns]);
+
   // Identify runs requiring 2FA intervention
   const activeActionRuns: ActionRequiredRunInfo[] = useMemo(() => {
     return allRuns
@@ -349,6 +358,12 @@ export default function DashboardOverviewPage() {
             });
           }
         }}
+      />
+
+      {/* First-run guidance: self-hides once every step is complete. */}
+      <SetupChecklist
+        workflowCount={stats.totalWorkflows}
+        completedRunCount={completedRunCount}
       />
 
       {/* Task-first entry point; existing workflow creation behavior is preserved. */}
