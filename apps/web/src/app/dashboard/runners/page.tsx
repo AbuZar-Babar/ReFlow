@@ -605,7 +605,7 @@ export default function RunnersPage() {
 
       <div className="space-y-6">
         {/* Organization Runner Pairing Token Card */}
-        <div id="pairing-token" className="bg-[#0c101d] border border-white/10 rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden flex flex-col justify-between">
+        <div id="pairing-token" data-tour="pairing-token" className="bg-[#0c101d] border border-white/10 rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden flex flex-col justify-between">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -714,7 +714,7 @@ export default function RunnersPage() {
       </div>
 
       {/* Connected Workers Section & Telemetry Cards */}
-      <div className="bg-[#0c101d] border border-white/10 rounded-2xl p-6 shadow-xl space-y-4">
+      <div className="bg-[#0c101d] border border-white/10 rounded-2xl p-6 shadow-xl space-y-4" data-tour="worker-status">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/5">
           <div className="flex items-center gap-2.5">
             <Server className="w-4 h-4 text-cyan-400" />

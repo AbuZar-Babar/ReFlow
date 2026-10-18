@@ -7,6 +7,9 @@ import { Sidebar } from '@/components/dashboard/Sidebar';
 import { Header } from '@/components/dashboard/Header';
 import { RunDetailsDrawer } from '@/components/dashboard/RunDetailsDrawer';
 import { RobotAvatar } from '@/components/dashboard/RobotAvatar';
+import { TourProvider } from '@/components/tour/TourProvider';
+import { TourOverlay } from '@/components/tour/TourOverlay';
+import { TourAutoStart } from '@/components/tour/TourAutoStart';
 
 function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -53,37 +56,43 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen flex bg-reflow-canvas text-[var(--foreground,#f8fafc)] selection:bg-[rgba(var(--primary-rgb,0,240,255),0.2)] selection:text-[var(--primary-color,#00f0ff)]">
-      {/* Persistent Left Sidebar */}
-      <Sidebar isRunnerOnline={isRunnerOnline} />
+    <TourProvider>
+      <div className="min-h-screen flex bg-reflow-canvas text-[var(--foreground,#f8fafc)] selection:bg-[rgba(var(--primary-rgb,0,240,255),0.2)] selection:text-[var(--primary-color,#00f0ff)]">
+        {/* Persistent Left Sidebar */}
+        <Sidebar isRunnerOnline={isRunnerOnline} />
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        {/* Top Header */}
-        <Header
-          organizationName={organizationName}
-          userEmail={userEmail}
-          isRunnerOnline={isRunnerOnline}
-          onRefresh={refreshDashboard}
-          isRefreshing={isRefreshing}
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+          {/* Top Header */}
+          <Header
+            organizationName={organizationName}
+            userEmail={userEmail}
+            isRunnerOnline={isRunnerOnline}
+            onRefresh={refreshDashboard}
+            isRefreshing={isRefreshing}
+          />
+
+          {/* Dynamic Route Content */}
+          <main className="flex-1 overflow-y-auto bg-reflow-canvas p-4 sm:p-6 lg:p-8">
+            <div className="max-w-7xl mx-auto">
+              {children}
+            </div>
+          </main>
+        </div>
+
+        {/* Global Slide-over Run Details Drawer */}
+        <RunDetailsDrawer
+          isOpen={isDrawerOpen}
+          onClose={closeRunDetails}
+          run={selectedRun}
+          onStopRun={stopActiveRun}
         />
-
-        {/* Dynamic Route Content */}
-        <main className="flex-1 overflow-y-auto bg-reflow-canvas p-4 sm:p-6 lg:p-8">
-          <div className="max-w-7xl mx-auto">
-            {children}
-          </div>
-        </main>
       </div>
 
-      {/* Global Slide-over Run Details Drawer */}
-      <RunDetailsDrawer
-        isOpen={isDrawerOpen}
-        onClose={closeRunDetails}
-        run={selectedRun}
-        onStopRun={stopActiveRun}
-      />
-    </div>
+      {/* Guided tour: first visit to Home starts it; the ? button replays any tour. */}
+      <TourAutoStart tourId="dashboard" matchPath="/dashboard" />
+      <TourOverlay />
+    </TourProvider>
   );
 }
 

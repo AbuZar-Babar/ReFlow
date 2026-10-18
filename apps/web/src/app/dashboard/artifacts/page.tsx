@@ -1063,7 +1063,7 @@ export default function ArtifactsVaultPage() {
         </div>
       )}
 
-      <section aria-label="File search and filters" className="rounded-2xl border border-white/[0.08] bg-[#0c101d]/75 p-3.5 sm:p-4">
+      <section aria-label="File search and filters" data-tour="artifacts-filters" className="rounded-2xl border border-white/[0.08] bg-[#0c101d]/75 p-3.5 sm:p-4">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
           <div className="relative min-w-0 flex-1">
             <Search aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
@@ -1102,7 +1102,7 @@ export default function ArtifactsVaultPage() {
       </section>
 
       {/* Main Content Area */}
-      <div className="bg-[#0c101d]/90 rounded-2xl border border-white/5 backdrop-blur-xl overflow-hidden shadow-2xl">
+      <div className="bg-[#0c101d]/90 rounded-2xl border border-white/5 backdrop-blur-xl overflow-hidden shadow-2xl" data-tour="artifacts-list">
         {/* Loading Skeleton */}
         {isLoading ? (
           <div className="py-24 flex flex-col items-center justify-center gap-4 text-slate-400">

@@ -370,6 +370,7 @@ export default function DashboardOverviewPage() {
       {/* Task-first entry point; existing workflow creation behavior is preserved. */}
       <section
         aria-labelledby="dashboard-task-heading"
+        data-tour="hero"
         className="rounded-2xl border border-[var(--border-color,rgba(255,255,255,0.08))] bg-[var(--surface-bg,#0c101d)] p-5 sm:p-7"
       >
         <div className="max-w-2xl space-y-2">
@@ -404,7 +405,7 @@ export default function DashboardOverviewPage() {
 
 
       {/* Compact metrics retain the existing live values and navigation. */}
-      <section aria-label="Workspace metrics" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <section aria-label="Workspace metrics" data-tour="metrics" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <Link href="/dashboard/workflows" className="group rounded-xl border border-[var(--border-color,rgba(255,255,255,0.08))] bg-[var(--surface-bg,#0c101d)] p-4 transition-colors hover:border-[var(--primary-color,#00f0ff)] sm:p-5">
           <div className="flex items-center justify-between gap-2"><span className="text-xs font-medium text-slate-400 sm:text-sm">Workflows</span><WorkflowIcon aria-hidden="true" className="h-4 w-4 flex-shrink-0 text-[var(--primary-color,#00f0ff)]" /></div>
           <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--foreground,#f8fafc)]">{loadError || loading ? '—' : stats.totalWorkflows}</p>
@@ -463,7 +464,7 @@ export default function DashboardOverviewPage() {
       </section>
 
       {/* Recent executions remain the primary operational content */}
-      <section className="space-y-3">
+      <section className="space-y-3" data-tour="recent-runs">
         <div className="flex items-center justify-between gap-3">
           <div className="space-y-1">
             <h2 className="text-base font-semibold tracking-tight text-[var(--foreground,#f8fafc)]">Recent runs</h2>

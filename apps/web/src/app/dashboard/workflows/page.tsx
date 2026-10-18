@@ -376,6 +376,7 @@ export default function WorkflowsPage() {
           <button
             type="button"
             onClick={() => setIsCreateModalOpen(true)}
+            data-tour="wf-create"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs sm:text-sm shadow-sm transition-colors cursor-pointer"
           >
             <Plus className="h-4 w-4 stroke-[2.5]" />
@@ -385,7 +386,7 @@ export default function WorkflowsPage() {
       </div>
 
       {/* Streamlined Toolbar Row */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-slate-900/60 border border-slate-800/80 p-3 rounded-2xl backdrop-blur-md">
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-slate-900/60 border border-slate-800/80 p-3 rounded-2xl backdrop-blur-md" data-tour="wf-toolbar">
         {/* Left: Search & Filter Controls */}
         <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
           {/* Instant Search with Ctrl+K shortcut */}
@@ -495,7 +496,7 @@ export default function WorkflowsPage() {
 
       {/* Loading Skeleton */}
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 py-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 py-4" data-tour="wf-list">
           {[1, 2, 3, 4, 5, 6].map((idx) => (
             <div
               key={idx}
@@ -518,7 +519,7 @@ export default function WorkflowsPage() {
         </div>
       ) : filteredWorkflows.length === 0 ? (
         /* Empty States */
-        <div className="py-16 px-6 text-center rounded-3xl bg-slate-900/40 border border-slate-800/80 backdrop-blur-md flex flex-col items-center justify-center space-y-4">
+        <div className="py-16 px-6 text-center rounded-3xl bg-slate-900/40 border border-slate-800/80 backdrop-blur-md flex flex-col items-center justify-center space-y-4" data-tour="wf-list">
           {workflows.length === 0 ? (
             <>
               <RobotAvatar size="medium" state="idle" />

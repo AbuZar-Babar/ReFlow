@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useDashboard } from '@/context/DashboardContext';
+import { TakeTourButton } from '@/components/tour/TakeTourButton';
 
 const WINDOWS_DOWNLOAD_HREF = '/api/v1/runners/download?type=installer&os=windows';
 
@@ -152,6 +153,9 @@ export default function GettingStartedPage() {
             <WifiOff aria-hidden="true" className="h-3.5 w-3.5" />
           )}
           <span>{isRunnerOnline ? 'Desktop worker connected' : 'No desktop worker connected yet'}</span>
+        </div>
+        <div className="pt-1">
+          <TakeTourButton tourId="dashboard" />
         </div>
       </header>
 

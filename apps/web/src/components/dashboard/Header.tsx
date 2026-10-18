@@ -11,6 +11,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { TakeTourButton } from '@/components/tour/TakeTourButton';
 
 interface HeaderProps {
   organizationName?: string;
@@ -54,6 +55,8 @@ export function Header({
   return (
     <header className="sticky top-0 z-20 flex h-14 select-none items-center justify-end border-b border-[var(--border-color,rgba(255,255,255,0.07))] bg-[var(--header-bg,#0a0e1a)] px-3 sm:px-5">
       <div className="flex items-center gap-2 sm:gap-3">
+        <TakeTourButton variant="icon" />
+
         {onRefresh && (
           <button
             type="button"
@@ -69,6 +72,7 @@ export function Header({
 
       <Link
         href="/dashboard/runners"
+        data-tour="header-status"
         className={`flex min-w-0 items-center gap-2 rounded-md px-1.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-color,#00f0ff)] ${
           isRunnerOnline
             ? 'text-emerald-300 hover:bg-emerald-500/10'

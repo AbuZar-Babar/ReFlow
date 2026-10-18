@@ -123,6 +123,7 @@ export function SetupChecklist({
   return (
     <section
       aria-labelledby="setup-checklist-heading"
+      data-tour="checklist"
       className="rounded-2xl border border-[var(--border-color,rgba(255,255,255,0.08))] bg-[var(--surface-bg,#0c101d)] p-5 sm:p-6"
     >
       <div className="flex items-start justify-between gap-3">

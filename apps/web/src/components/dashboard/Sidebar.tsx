@@ -46,13 +46,13 @@ export function Sidebar({ isRunnerOnline = false }: SidebarProps) {
   };
 
   const navItems = [
-    { label: 'Home', href: '/dashboard', icon: LayoutGrid, exact: true },
-    { label: 'Workflows', href: '/dashboard/workflows', icon: Workflow, exact: false },
-    { label: 'Run history', href: '/dashboard/runs', icon: Activity, exact: false },
-    { label: 'Files & results', href: '/dashboard/artifacts', icon: FileText, exact: false },
-    { label: 'Desktop connection', href: '/dashboard/runners', icon: Cpu, exact: false },
-    { label: 'Getting started', href: '/dashboard/getting-started', icon: HelpCircle, exact: false },
-    { label: 'Settings', href: '/dashboard/settings', icon: Settings, exact: false }
+    { label: 'Home', href: '/dashboard', icon: LayoutGrid, exact: true, tour: 'nav-home' },
+    { label: 'Workflows', href: '/dashboard/workflows', icon: Workflow, exact: false, tour: 'nav-workflows' },
+    { label: 'Run history', href: '/dashboard/runs', icon: Activity, exact: false, tour: 'nav-runs' },
+    { label: 'Files & results', href: '/dashboard/artifacts', icon: FileText, exact: false, tour: 'nav-artifacts' },
+    { label: 'Desktop connection', href: '/dashboard/runners', icon: Cpu, exact: false, tour: 'nav-runners' },
+    { label: 'Getting started', href: '/dashboard/getting-started', icon: HelpCircle, exact: false, tour: 'nav-getting-started' },
+    { label: 'Settings', href: '/dashboard/settings', icon: Settings, exact: false, tour: 'nav-settings' }
   ];
 
   const isActive = (itemHref: string, exact: boolean) => {
@@ -62,6 +62,7 @@ export function Sidebar({ isRunnerOnline = false }: SidebarProps) {
 
   return (
     <aside
+      data-tour="sidebar"
       className={`sticky top-0 z-30 flex h-screen flex-shrink-0 select-none flex-col justify-between border-r border-[var(--border-color,rgba(255,255,255,0.07))] bg-[var(--sidebar-bg,#0c101d)] py-4 transition-[width,padding] duration-200 ease-out ${
         isCollapsed ? 'w-14 px-2' : 'w-[230px] px-3.5'
       }`}
@@ -93,6 +94,7 @@ export function Sidebar({ isRunnerOnline = false }: SidebarProps) {
               <Link
                 key={item.href}
                 href={item.href}
+                data-tour={item.tour}
                 aria-label={item.label}
                 aria-current={active ? 'page' : undefined}
                 title={isCollapsed ? item.label : undefined}
