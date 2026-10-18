@@ -12,7 +12,8 @@ import {
   Play,
   Video,
   Wifi,
-  WifiOff
+  WifiOff,
+  Workflow
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useDashboard } from '@/context/DashboardContext';
@@ -230,6 +231,67 @@ export default function GettingStartedPage() {
           );
         })}
       </ol>
+
+      <section
+        aria-labelledby="canvas-heading"
+        className="rounded-2xl border border-[var(--border-color,rgba(255,255,255,0.08))] bg-[var(--surface-bg,#0c101d)] p-5 sm:p-6"
+      >
+        <div className="flex items-start gap-3">
+          <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--surface-hover,#11182c)]">
+            <Workflow aria-hidden="true" className="h-4 w-4 text-[var(--primary-color,#00f0ff)]" />
+          </span>
+          <div className="min-w-0 space-y-1">
+            <h2
+              id="canvas-heading"
+              className="text-base font-semibold tracking-tight text-[var(--foreground,#f8fafc)]"
+            >
+              Changing a workflow on the canvas
+            </h2>
+            <p className="text-xs leading-5 text-slate-400 sm:text-sm">
+              Open any workflow and choose Edit. The canvas is the same task you recorded, laid out as
+              steps you can read and change — no re-recording needed.
+            </p>
+          </div>
+        </div>
+
+        <ul className="mt-4 space-y-2 pl-12">
+          <li className="flex items-start gap-2 text-xs leading-5 text-slate-300 sm:text-sm">
+            <CheckCircle2 aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-slate-600" />
+            <span>
+              <span className="font-medium text-[var(--foreground,#f8fafc)]">A box is one action.</span>{' '}
+              Click, type, select, navigate, wait or extract. The line from one box to the next is the
+              order things happen in.
+            </span>
+          </li>
+          <li className="flex items-start gap-2 text-xs leading-5 text-slate-300 sm:text-sm">
+            <CheckCircle2 aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-slate-600" />
+            <span>
+              <span className="font-medium text-[var(--foreground,#f8fafc)]">Select a box to configure it.</span>{' '}
+              Its settings slide in from the right: which element to click, what to type, where to navigate.
+            </span>
+          </li>
+          <li className="flex items-start gap-2 text-xs leading-5 text-slate-300 sm:text-sm">
+            <CheckCircle2 aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-slate-600" />
+            <span>
+              <span className="font-medium text-[var(--foreground,#f8fafc)]">Save before you run.</span>{' '}
+              Running an unsaved workflow tests the previous version, not the one on your screen.
+            </span>
+          </li>
+          <li className="flex items-start gap-2 text-xs leading-5 text-slate-300 sm:text-sm">
+            <CheckCircle2 aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-slate-600" />
+            <span>
+              <span className="font-medium text-[var(--foreground,#f8fafc)]">Add steps for what a recording missed.</span>{' '}
+              A confirmation dialog, an extra wait, a second page — add it on the canvas and connect it
+              into the flow.
+            </span>
+          </li>
+        </ul>
+
+        <p className="mt-4 pl-12 text-xs text-slate-500">
+          The canvas has its own guided tour — open a workflow, choose Edit, then press the{' '}
+          <span aria-hidden="true">?</span> in the header.
+        </p>
+      </section>
 
       <section aria-labelledby="troubleshooting-heading" className="space-y-3">
         <div className="space-y-1">

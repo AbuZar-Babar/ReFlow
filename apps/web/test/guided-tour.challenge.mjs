@@ -47,13 +47,44 @@ describe('Guided tour', () => {
     assert.deepEqual(missing, [], `tour targets with no anchor in the app: ${missing.join(', ')}`);
   });
 
-  test('the four dashboard tours exist with content', () => {
+  test('the five dashboard tours exist with content', () => {
     const src = read(stepsPath);
-    for (const id of ['dashboard', 'workflows', 'runners', 'artifacts']) {
+    for (const id of ['dashboard', 'workflows', 'canvas', 'runners', 'artifacts']) {
       assert.match(src, new RegExp(`^  ${id}: \\{`, 'm'), `missing tour: ${id}`);
     }
     assert.match(src, /export function tourForPath/, 'routes must map to tours');
     assert.match(src, /if \(pathname === '\/dashboard'/, 'home route maps to the dashboard tour');
+  });
+
+  test('the editor route maps to the canvas tour, not the workflows list tour', () => {
+    const src = read(stepsPath);
+    const fn = src.match(/export function tourForPath[\s\S]*?\n}/);
+    assert.ok(fn, 'tourForPath must exist');
+
+    const canvasIndex = fn[0].indexOf("return 'canvas'");
+    const workflowsIndex = fn[0].indexOf("return 'workflows'");
+    assert.ok(canvasIndex !== -1, 'the edit route must resolve to the canvas tour');
+    assert.ok(
+      canvasIndex < workflowsIndex,
+      'the edit route must be matched before the /dashboard/workflows prefix'
+    );
+  });
+
+  test('the full-bleed editor route still mounts the tour', () => {
+    const layout = read(layoutPath);
+    const editorBranch = layout.match(/if \(isWorkflowEditor\) \{[\s\S]*?\n  \}/);
+    assert.ok(editorBranch, 'the editor branch must exist');
+    assert.match(
+      editorBranch[0],
+      /<TourProvider>/,
+      'the editor bypasses the dashboard shell, so it needs its own provider'
+    );
+    assert.match(editorBranch[0], /<TourOverlay \/>/, 'the editor needs the overlay too');
+
+    const editor = read(
+      path.resolve(srcRoot, 'components/workflow-editor/VisualWorkflowEditor.tsx')
+    );
+    assert.match(editor, /<TakeTourButton variant="icon" tourId="canvas" \/>/);
   });
 
   test('auto-start happens once, after data loads, and never twice', () => {

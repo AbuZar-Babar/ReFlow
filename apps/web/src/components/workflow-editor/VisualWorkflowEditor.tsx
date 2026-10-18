@@ -11,6 +11,7 @@ import {
   createDefaultStepData,
 } from './CustomNodes';
 import PropertyDrawer from './PropertyDrawer';
+import { TakeTourButton } from '@/components/tour/TakeTourButton';
 import { useDashboard } from '@/context/DashboardContext';
 import { Workflow } from '@/lib/types/database';
 import { ExecutionPreflightModal } from '@/components/dashboard/ExecutionPreflightModal';
@@ -746,7 +747,7 @@ export default function VisualWorkflowEditor({ workflowId }: VisualWorkflowEdito
       {/* ===================================================================
           Top Navigation Bar
           =================================================================== */}
-      <header className="z-30 flex h-16 w-full items-center justify-between border-b border-slate-800/80 bg-slate-950/80 px-4 md:px-6 backdrop-blur-md">
+      <header data-tour="canvas-header" className="z-30 flex h-16 w-full items-center justify-between border-b border-slate-800/80 bg-slate-950/80 px-4 md:px-6 backdrop-blur-md">
         {/* Left: Back & Title */}
         <div className="flex items-center gap-4 min-w-0">
           <Link
@@ -789,10 +790,13 @@ export default function VisualWorkflowEditor({ workflowId }: VisualWorkflowEdito
 
         {/* Right: Actions */}
         <div className="flex items-center gap-2.5">
+          <TakeTourButton variant="icon" tourId="canvas" />
+
           {/* Save to Cloud Button */}
           <button
             onClick={handleSaveToCloud}
             disabled={isSaving}
+            data-tour="canvas-save"
             className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
               isDirty
                 ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/40 hover:bg-emerald-500'
@@ -811,6 +815,7 @@ export default function VisualWorkflowEditor({ workflowId }: VisualWorkflowEdito
           <button
             onClick={handleRunNow}
             disabled={isSaving}
+            data-tour="canvas-run"
             className="inline-flex items-center gap-1.5 rounded-lg bg-cyan-600 px-4 py-2 text-xs font-semibold text-white hover:bg-cyan-500 transition cursor-pointer"
           >
             {isSaving ? (
@@ -859,7 +864,7 @@ export default function VisualWorkflowEditor({ workflowId }: VisualWorkflowEdito
           =================================================================== */}
       <main className="relative flex min-h-0 flex-1 w-full overflow-hidden bg-[#0B1220]">
         {/* Workflow step navigator */}
-        <aside className="hidden md:flex w-[220px] shrink-0 flex-col border-r border-slate-800 bg-[#0F172A] px-3 py-5">
+        <aside data-tour="canvas-steps" className="hidden md:flex w-[220px] shrink-0 flex-col border-r border-slate-800 bg-[#0F172A] px-3 py-5">
           <div className="mb-4 px-2">
             <h2 className="text-xs font-semibold tracking-wide text-slate-200">Workflow steps</h2>
             <p className="mt-1 text-xs text-slate-500">Select a step to edit it.</p>
@@ -894,6 +899,7 @@ export default function VisualWorkflowEditor({ workflowId }: VisualWorkflowEdito
           <div className="relative">
             <button
               onClick={() => setIsPaletteOpen(!isPaletteOpen)}
+              data-tour="canvas-add-step"
               className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/20 transition cursor-pointer"
             >
               <Plus className="h-3.5 w-3.5" />
@@ -992,7 +998,7 @@ export default function VisualWorkflowEditor({ workflowId }: VisualWorkflowEdito
           <p className="mt-3 px-2 text-[11px] text-slate-500">{orderedCanvasNodes.length} {orderedCanvasNodes.length === 1 ? 'step' : 'steps'}</p>
         </aside>
         <section className="relative min-w-0 flex-1 overflow-hidden bg-[#0B1220]">
-          <div className="absolute left-4 top-4 z-10 hidden sm:block pointer-events-none">
+          <div className="absolute left-4 top-4 z-10 hidden sm:block pointer-events-none" data-tour="canvas-stage">
             <h2 className="text-sm font-semibold text-slate-200">Workflow canvas</h2>
             <p className="mt-1 text-xs text-slate-500">Select a step to configure it.</p>
           </div>
