@@ -5,6 +5,7 @@ node_modules/
 
 # Agent coordination metadata
 .agents/
+.workbuddy-ai/
 
 # Testing
 coverage/
