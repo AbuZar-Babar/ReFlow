@@ -1,118 +1,101 @@
 # AI Collaboration & Planning Workflow
 
-## 1. Purpose and Architecture
+## 1. Purpose
 
-This document defines the planning, architecture, implementation, and review workflow for ReFlow. It applies to human planners, AI planners, implementers, and reviewers alike, and is deliberately tool-agnostic: roles are described by responsibility rather than by vendor or product name.
+This document describes how planning, implementation, and review actually happen on ReFlow today. It covers a single AI coding assistant working directly in the repository, alongside the human project owner.
 
-Implementation rules for the executing agent are maintained separately in root [AGENTS.md](../../AGENTS.md).
+Implementation rules — what the agent may and may not do — live in root [AGENTS.md](../../AGENTS.md). That file is authoritative. This document only explains the surrounding workflow and the reasoning behind it.
 
-All prompt handoffs, context sharing, and report transfers are handled manually by the user. There is no automated model-to-model communication or direct execution bridge.
+Where the two disagree, `AGENTS.md` wins.
 
-## 2. Roles and Boundaries
+## 2. How Work Is Divided
 
-Roles are defined by responsibility, not by which tool fills them. A single tool may fill several roles across different tasks, and role assignment is expected to move as tooling and access change:
+There are two participants, not three.
 
-- **The Planner**:
-  - **Primary responsibility**: System architecture, multi-file planning, and implementation prompt drafting.
-  - **Capability required**: Read access to the repository (directly or through a Repomix context pack) plus enough reasoning depth to evaluate complex logic and trade-offs.
-  - **Workflow**: Analyzes requirements, applies the pushback rules for big modules, formulates trade-offs, and drafts the implementation prompt for the implementer.
-- **The Implementer**:
-  - **Primary responsibility**: Local code implementation and test execution.
-  - **Capability required**: Direct file modification and terminal execution in the working directory.
-  - **Workflow**: Reads root `AGENTS.md`, executes in Quick mode or Careful mode, writes negative tests before sensitive fixes, and returns a structured completion report.
-- **The Verifier**:
-  - **Primary responsibility**: Verification, regression checking, and final implementation review.
-  - **Capability required**: The ability to inspect commits, diffs, branches, and code files directly rather than trusting report summaries.
-  - **Workflow**: Compares actual git commits and pull request diffs against the original requirements and acceptance criteria.
+**The owner (human).** Decides what matters, approves or rejects proposals, reviews the result, and does the manual verification that only a person can do: opening a page, clicking through a flow, running the desktop worker, looking at a screen. The owner is the only one who can authorize new features, new dependencies, schema changes, or new API routes.
 
-### Why Roles Can Change
-Roles are not rigid entitlements. They can change when:
-- **Repository access changes**: If a verifier cannot read the repository directly, another tool with code access performs the review from diff packs or commit patches.
-- **Quota and rate limits**: When one tool exhausts its usage quota, another capable tool assumes planning or review duties.
-- **Context window requirements**: A refactor requiring an exceptionally large single-pass context window may require shifting planning to a tool with higher token limits.
-- **Tooling updates**: When IDE extensions, local plugins, or platform capabilities evolve.
+**The coding agent (AI).** Reads the repository, proposes an approach, writes code, runs the commands, and reports back in plain language. The agent works in the live codebase and is expected to exercise judgment — including refusing to build something that will not work.
 
-## 3. Quota Management Rules
+There is no separate planner or verifier role. The agent plans its own work and checks its own work. The owner decides whether the outcome is right.
 
-Planning and review tooling consumes significant quota and must be used with discipline:
+### Why it is not split into three roles
 
-- **Quick fixes skip planning and review entirely**: Bug fixes, localized tweaks, typos, single-file edits, and straightforward improvements go straight to the implementer. Do not involve planner or verifier roles for routine edits.
-- **Reserve planners and verifiers for Careful mode**: Involve them only for planning big modules, complex multi-step features, architectural refactors, or high-risk security audits.
-- **Prefer narrow Repomix packs over full-repo packs**: When creating context packs for planners, pack only the relevant package or directory (for example, `apps/web`, `packages/engine`, or `apps/desktop`). Never generate or feed a full-monorepo pack when a targeted pack suffices. Narrow packs preserve context window token limits and reduce latency.
+Earlier revisions of this document defined distinct Planner, Implementer, and Verifier roles, with manual handoffs between them and quota discipline to ration planning access. That structure was built for a chain of separate chat sessions where context could not carry over.
 
-## 4. Repomix Snapshot Rules
+That constraint is gone. A single agent with repository access and command execution can plan, build, and check in one pass. Splitting it into roles would add handoff cost and lose context at every boundary, while the approval that genuinely matters — the owner's — happened at the end regardless.
 
-No repository-level Repomix configuration file exists in the codebase. Therefore, exclusion patterns must be supplied explicitly with every pack command rather than relying on automatic configuration.
+Manual handoffs between AI tools are no longer part of this workflow.
 
-Every pack command must explicitly exclude `.env`, `.env.*`, and `*.pem` using Repomix's ignore option.
+## 3. What Happens on a Typical Task
 
-### Verified Command Format (Repomix 1.18.1)
-The installed version of Repomix (`1.18.1`, verified via `npx repomix --version`) provides the `--ignore` / `-i` flag accepting comma-separated exclusion patterns.
+1. **The owner states a goal.**
+2. **The agent checks the ground.** It reads the code the change touches before proposing anything. If the request assumes something the code does not do, the agent says so and stops rather than inventing a plausible implementation.
+3. **The agent pushes back if warranted.** For anything large or uncertain, the agent assesses feasibility first: does this fit the existing architecture, does something in the codebase already do most of it, what is the smallest version that delivers the outcome, what will break. If the idea is harder than it sounds, the agent says so before writing code.
+4. **The owner decides.** The agent does not build a new feature, add a dependency, add a migration, or add an API route without a clear yes.
+5. **The agent implements.** Improved existing behavior is the default; new features require approval.
+6. **The agent verifies.** It runs the relevant commands and records what it actually saw. If a command was not run, it says so.
+7. **The agent reports.** A short plain-language summary: what changed, why the old version was inadequate, what is still wrong, what the owner needs to do by hand, and what was noticed but deliberately left alone.
 
-The exact command format to run is:
+The full rules behind steps 2, 3, 5, and 7 are in `AGENTS.md`, sections 1 through 4 and 12.
+
+## 4. When the Agent Must Stop and Ask
+
+The agent pauses and waits for the owner in these situations:
+
+- **The request does not match the code.** A referenced file, function, endpoint, or environment variable does not exist, or the existing behavior contradicts the request.
+- **A new feature is needed.** The agent proposes it and waits; it does not build it unprompted.
+- **A new dependency, migration, schema change, RLS policy, API route, or top-level package is needed.**
+- **A large or vague task may not be feasible as described.** The agent explains the obstacle and offers the smaller version that works.
+
+Routine fixes, small improvements, and cleanup inside the current task need no ceremony — the agent proceeds and reports.
+
+## 5. Security and Tenant Boundary Work
+
+Work touching authentication, runner tokens, tenant isolation, the desktop bridge, or RLS is the highest-risk category in this repository. The specific invariants are enumerated in `AGENTS.md`, section 6, and known findings are tracked in [CURRENT_STATE.md](CURRENT_STATE.md).
+
+Testing is not mandatory on this project. For security and tenant-isolation changes, however, a test that asserts the rejection is the only durable evidence that a fix holds — the next change can silently reopen a hole without one. Write it when practical; prefer it when the change is about rejecting an unauthorized caller.
+
+Negative cases worth covering when the work touches these boundaries:
+
+- **Wrong, short, or guessed runner tokens.** Incorrect strings, truncated `rf_live_` prefixes, missing secrets, and fabricated org IDs should all be rejected.
+- **Cross-tenant spoofing.** An organization ID supplied through `?org_id=`, a header, or `body.orgId` must never be honored; tenant scope comes from the authenticated session alone.
+- **Missing or malformed input.** Absent or empty authorization headers, required body fields, and token payloads should be rejected.
+
+## 6. Reviewing a Finished Task
+
+The owner reviews against the code, not against the agent's summary. A confident report is not evidence.
+
+What to check:
+
+- Does the diff contain only what the task asked for? Out-of-scope edits are a red flag, even when they look like improvements.
+- Does the described behavior match what the code actually does?
+- Were the regression commands run, and did the result differ from the known baseline in `AGENTS.md`, section 9?
+- Do the manual steps the agent listed actually work when a human performs them?
+
+If something is wrong, the correction is one specific instruction naming the exact file and the expected behavior — not a general invitation to "fix it".
+
+## 7. Repository Context Packs
+
+Repomix is still useful for handing a narrow slice of the repository to an AI tool that does not have direct filesystem access, or for occasional cross-checking. It is not part of the normal loop now that the working agent reads the repository directly.
+
+No repository-level Repomix configuration exists. Exclusion patterns must be passed explicitly on every invocation.
+
+Every pack must exclude `.env`, `.env.*`, and `*.pem`. This repository is public, and a pack is a plain-text copy of source — leaking a key into one is the same as committing it.
+
+Verified command format (Repomix 1.18.1, confirmed via `npx repomix --version`):
+
 ```bash
 npx repomix <directory> --style markdown -o <output-file> --ignore ".env,.env.*,*.pem"
 ```
 
-Examples for targeted packs:
-- **Web Plane**: `npx repomix apps/web --style markdown -o reflow-web.md --ignore ".env,.env.*,*.pem"`
-- **Automation Engine**: `npx repomix packages/engine --style markdown -o reflow-engine.md --ignore ".env,.env.*,*.pem"`
-- **Desktop Worker**: `npx repomix apps/desktop --style markdown -o reflow-desktop.md --ignore ".env,.env.*,*.pem"`
+Narrow packs, one plane at a time:
 
-### Repository Safety
-- **Never commit packs to the repository**: Repomix markdown packs (such as `reflow-web.md`, `reflow-engine.md`, `reflow-desktop-db.md`, or `repomix-output.txt`) must remain local, untracked, and ignored. Never stage or commit packs to git.
+```bash
+npx repomix apps/web       --style markdown -o reflow-web.md     --ignore ".env,.env.*,*.pem"
+npx repomix packages/engine --style markdown -o reflow-engine.md --ignore ".env,.env.*,*.pem"
+npx repomix apps/desktop   --style markdown -o reflow-desktop.md --ignore ".env,.env.*,*.pem"
+```
 
-## 5. Pushback Rules for Big Modules Only
+Never generate or feed a full-monorepo pack when a targeted one will do; it wastes context and raises the chance of pulling in excluded material.
 
-To prevent bureaucratic slowdowns, planners must not question or debate routine changes. Pushback and preliminary questioning are strictly reserved for **big modules**.
-
-### Definition of a Big Module
-A change qualifies as a big module if and only if it involves:
-1. A new feature or new module.
-2. A database schema change (e.g., Supabase table migrations, column alterations, or RLS policy updates).
-3. Anything touching authentication, authorization, secrets, runner tokens, or tenant isolation.
-4. A new external dependency (npm package or third-party service).
-5. A refactoring that spans multiple files or packages.
-
-### The Three Preliminary Questions
-When presented with a big module, the planner must not draft an implementation prompt immediately. Instead, the planner must first ask the user **up to three structured questions**:
-1. **The Main Goal**: What is the core business and technical outcome required?
-2. **Approach Options & Recommendation**: What are the viable implementation approaches, and which one does the planner recommend with trade-offs?
-3. **Workflow Changes**: How does this change the existing user journey, runner execution flow, or API contract?
-
-*Small changes and routine fixes get no preliminary questions; the user or planner proceeds immediately with the prompt.*
-
-## 6. Security Checklist for Auth and Tenant Changes
-
-Whenever a task touches authentication (`apps/web/src/lib/auth/`), runner tokens, API routes (`apps/web/src/app/api/v1/`), or tenant isolation, the planner must incorporate this checklist into the prompt, and Flash must implement a test for every item before writing the fix:
-
-- [ ] **Wrong, short, and guessed tokens**:
-  - Test rejection of incorrect token strings.
-  - Test rejection of short or truncated tokens (e.g., truncated `rf_live_` prefixes or missing secret).
-  - Test rejection of guessed prefixes or fake UUID combinations.
-- [ ] **Cross-tenant organization ID spoofing**:
-  - Test that passing another organization's ID in query parameters (`?org_id=`), headers, or request bodies (`org_id`, `orgId`) is rejected or ignored.
-  - Test that workflow and run operations are strictly scoped to the authenticated organization.
-- [ ] **Missing or malformed fields**:
-  - Test rejection when authorization headers, required body fields, or token payloads are absent, empty, or malformed.
-- [ ] **Test coverage requirement**:
-  - Every condition listed above must have an explicit automated test asserting rejection (HTTP 401 Unauthorized or 403 Forbidden).
-
-## 7. Implementation Prompt Structure
-
-When a planner prepares a Careful-mode prompt for the implementer, the prompt must include:
-1. **Task Title & Mode**: Clearly marked as Careful mode.
-2. **Goal & Source Scope**: Specific user-visible outcome and explicit files to inspect.
-3. **Pre-Implementation Test Requirement**: Negative security tests required before fix code.
-4. **Requirements & Edge Cases**: Detailed behavioral specifications.
-5. **Acceptance Criteria**: Concrete, observable outcomes.
-6. **Completion Report Requirement**: Mandate the six required report sections defined in root `AGENTS.md`.
-
-## 8. Review and Verification Standard
-
-When reviewing a completed task:
-- The verifier inspects the commit directly through repository access, or reviews an explicit git diff.
-- Verify against the code in the repository, not unverified claims in the completion report.
-- Confirm all negative security tests were written and executed.
-- Ensure no out-of-scope files were modified.
-- If issues remain, issue one targeted correction prompt specifying the exact file and expected behavior.
+**Never commit a pack.** Pack output (`reflow-*.md`, `repomix-output.txt`) is local scratch. Do not stage or commit it.
