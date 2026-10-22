@@ -23,6 +23,14 @@ const notifier = require('./notifier');
 const engineResolver = require('./engine-resolver');
 const RecorderBridge = engineResolver.requireEngine('src/recorder/recorder-bridge');
 
+// Maximum accepted JSON request body. Anything larger is rejected with 413
+// before it is fully buffered.
+const MAX_BODY_BYTES = 1024 * 1024;
+
+// Local web dashboard ports this bridge is allowed to accept requests from.
+// The bridge's own port is added separately.
+const LOCAL_DASHBOARD_PORTS = [3000];
+
 class HttpBridge {
   constructor() {
     this.port = 49152;
@@ -68,21 +76,33 @@ class HttpBridge {
     };
   }
 
+  _getConfiguredOrigin() {
+    const configuredCloudUrl = (this.configManager?.get?.()?.cloudUrl) || (configManager?.get?.()?.cloudUrl) || '';
+    try {
+      return configuredCloudUrl ? new URL(configuredCloudUrl).origin : '';
+    } catch {
+      return '';
+    }
+  }
+
+  _getLocalOrigins() {
+    const ports = new Set([...LOCAL_DASHBOARD_PORTS, this.port]);
+    const origins = new Set();
+    for (const port of ports) {
+      origins.add(`http://127.0.0.1:${port}`);
+      origins.add(`http://localhost:${port}`);
+    }
+    return origins;
+  }
+
   setCorsHeaders(req, res) {
     const rawOrigin = req.headers.origin;
     let allowedOrigin = 'http://localhost:3000';
     if (!rawOrigin) {
       allowedOrigin = '*';
     } else {
-      const configuredCloudUrl = (this.configManager?.get?.()?.cloudUrl) || (configManager?.get?.()?.cloudUrl) || '';
-      let configuredOrigin = '';
-      try {
-        if (configuredCloudUrl) configuredOrigin = new URL(configuredCloudUrl).origin;
-      } catch (_) {}
-
-      const isTrusted =
-        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(rawOrigin) ||
-        /^https:\/\/([a-z0-9-]+\.)?reflow\.(io|ai|app|dev)$/i.test(rawOrigin) ||
+      const configuredOrigin = this._getConfiguredOrigin();
+      const isTrusted = this._getLocalOrigins().has(rawOrigin) ||
         (configuredOrigin && rawOrigin === configuredOrigin);
 
       if (isTrusted) {
@@ -105,19 +125,65 @@ class HttpBridge {
     res.end(JSON.stringify(data));
   }
 
+  _bodyTooLargeError() {
+    const err = new Error(`Request body exceeds the ${MAX_BODY_BYTES} byte limit`);
+    err.statusCode = 413;
+    return err;
+  }
+
   parseBody(req) {
-    return new Promise((resolve) => {
-      let body = '';
-      req.on('data', chunk => { body += chunk; });
+    return new Promise((resolve, reject) => {
+      const declaredLength = Number(req.headers['content-length']);
+      if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) {
+        req.resume();
+        reject(this._bodyTooLargeError());
+        return;
+      }
+
+      const chunks = [];
+      let receivedBytes = 0;
+      let settled = false;
+
+      req.on('data', (chunk) => {
+        if (settled) return;
+        receivedBytes += chunk.length;
+        if (receivedBytes > MAX_BODY_BYTES) {
+          settled = true;
+          chunks.length = 0;
+          reject(this._bodyTooLargeError());
+          req.resume();
+          return;
+        }
+        chunks.push(chunk);
+      });
       req.on('end', () => {
+        if (settled) return;
+        settled = true;
         try {
+          const body = Buffer.concat(chunks).toString('utf8');
           resolve(body ? JSON.parse(body) : {});
         } catch {
           resolve({});
         }
       });
-      req.on('error', () => resolve({}));
+      req.on('error', () => {
+        if (settled) return;
+        settled = true;
+        resolve({});
+      });
     });
+  }
+
+  async readJsonBody(req, res) {
+    try {
+      return await this.parseBody(req);
+    } catch (err) {
+      if (err.statusCode === 413) {
+        this.sendJson(req, res, 413, { error: err.message });
+        return null;
+      }
+      throw err;
+    }
   }
 
   async start() {
@@ -138,7 +204,14 @@ class HttpBridge {
           return;
         }
 
-        // 2. Health Endpoint
+        // 2. Reject oversized request bodies before any handler buffers them.
+        const declaredLength = Number(req.headers['content-length']);
+        if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) {
+          req.resume();
+          return this.sendJson(req, res, 413, { error: this._bodyTooLargeError().message });
+        }
+
+        // 3. Health Endpoint
         if ((pathname === '/health' || pathname === '/api/health') && req.method === 'GET') {
           const activeActions = this.activeRecorder?.actions || this.actions || [];
           return this.sendJson(req, res, 200, {
@@ -150,7 +223,7 @@ class HttpBridge {
           });
         }
 
-        // 3. Status Endpoint
+        // 4. Status Endpoint
         if ((pathname === '/record/status' || pathname === '/api/record/status') && req.method === 'GET') {
           const activeActions = this.activeRecorder?.actions || this.actions || [];
           return this.sendJson(req, res, 200, {
@@ -168,9 +241,10 @@ class HttpBridge {
           });
         }
 
-        // 4. Start Recording Endpoint
+        // 5. Start Recording Endpoint
         if ((pathname === '/record/start' || pathname === '/api/record/start') && req.method === 'POST') {
-          const body = await this.parseBody(req);
+          const body = await this.readJsonBody(req, res);
+          if (body === null) return;
           try {
             const result = await this.startRecording(body);
             return this.sendJson(req, res, 200, result);
@@ -179,7 +253,7 @@ class HttpBridge {
           }
         }
 
-        // 5. Stop Recording Endpoint
+        // 6. Stop Recording Endpoint
         if ((pathname === '/record/stop' || pathname === '/api/record/stop') && req.method === 'POST') {
           try {
             const result = await this.stopRecording();
@@ -189,7 +263,7 @@ class HttpBridge {
           }
         }
 
-        // 6. Stop Active Execution Run Endpoint
+        // 7. Stop Active Execution Run Endpoint
         if ((pathname === '/run/stop' || pathname === '/api/run/stop') && req.method === 'POST') {
           try {
             const runnerController = require('./runner-controller');
@@ -200,10 +274,11 @@ class HttpBridge {
           }
         }
 
-        // 7. Live Page and Table Item Discovery Endpoint
+        // 8. Live Page and Table Item Discovery Endpoint
         if ((pathname === '/discover' || pathname === '/api/discover') && (req.method === 'POST' || req.method === 'GET')) {
           try {
-            const body = req.method === 'POST' ? await this.parseBody(req).catch(() => ({})) : {};
+            const body = req.method === 'POST' ? await this.readJsonBody(req, res) : {};
+            if (body === null) return;
             const workflow = body.workflow || null;
             const targetUrl = body.url || workflow?.portal_url || workflow?.start_url || workflow?.targetUrl;
 
@@ -212,11 +287,14 @@ class HttpBridge {
             const ItemDiscovery = engineResolver.requireEngine('src/shared/item-discovery');
             const LoopReplayRunner = engineResolver.requireEngine('src/replay/loop-replay-runner');
 
-            const { browser, page } = await connectToBrowser({ autoLaunch: false }).catch(() => ({ browser: null, page: null }));
+            const { browser, page } = await connectToBrowser({
+              browserURL: chromeSpawner.browserURL,
+              autoLaunch: false
+            }).catch(() => ({ browser: null, page: null }));
             if (!page) {
               return this.sendJson(req, res, 200, {
                 success: false,
-                reason: 'No active Chrome browser session on port 9222',
+                reason: `No active Chrome browser session on port ${chromeSpawner.port}`,
                 availableFields: [],
                 fieldValues: {},
                 itemCount: 0,
@@ -340,17 +418,38 @@ class HttpBridge {
       }
     });
 
+    const server = this.server;
     return new Promise((resolve, reject) => {
-      this.server.listen(this.port, this.host, () => {
-        console.log(`[HTTPBridge] Desktop Localhost Bridge listening on http://${this.host}:${this.port}`);
-        resolve();
-      });
-      this.server.on('error', (err) => {
+      let settled = false;
+
+      server.on('error', (err) => {
         console.error(`[HTTPBridge] Server error on port ${this.port}:`, err.message);
-        if (!this.server.listening) {
-          reject(err);
+        if (!server.listening) {
+          // Do not leave a dead server object behind: a later start() would
+          // otherwise treat the bridge as running while it cannot accept requests.
+          if (this.server === server) this.server = null;
+          try { server.close(); } catch {}
+          if (!settled) {
+            settled = true;
+            reject(err);
+          }
         }
       });
+
+      try {
+        server.listen(this.port, this.host, () => {
+          settled = true;
+          console.log(`[HTTPBridge] Desktop Localhost Bridge listening on http://${this.host}:${this.port}`);
+          resolve();
+        });
+      } catch (err) {
+        if (this.server === server) this.server = null;
+        try { server.close(); } catch {}
+        if (!settled) {
+          settled = true;
+          reject(err);
+        }
+      }
     });
   }
 
@@ -362,7 +461,7 @@ class HttpBridge {
     const sessionName = options.name || `workflow-${Date.now()}`;
     const targetUrl = options.url || 'https://google.com';
 
-    // Ensure Chrome is active on port 9222
+    // Ensure Chrome is active on the CDP port
     await chromeSpawner.ensureChrome('visible');
 
     const config = configManager.get();
@@ -386,7 +485,7 @@ class HttpBridge {
 
     this.activeRecorder = new RecorderBridge({
       name: sessionName,
-      browserURL: 'http://127.0.0.1:9222',
+      browserURL: chromeSpawner.browserURL,
       outputDir,
       onSave: async () => {
         await this._handleChromeSave();

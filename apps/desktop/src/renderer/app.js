@@ -607,6 +607,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       .slice(0, 5)
       .map((r) => {
         const isSuccess = r.status === 'completed';
+        const isCancelled = r.status === 'cancelled';
         const tagClass = isSuccess ? 'tag-success' : 'tag-failed';
         const timeStr = r.completedAt ? new Date(r.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now';
         
@@ -616,6 +617,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             ? `${r.itemsDownloaded} items`
             : 'Completed';
           labelContent = `${SVG_ICONS.check} <span>${countText}</span>`;
+        } else if (isCancelled) {
+          labelContent = `${SVG_ICONS.fail} <span>Cancelled</span>`;
         } else {
           labelContent = `${SVG_ICONS.fail} <span>Failed</span>`;
         }

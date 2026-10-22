@@ -3,6 +3,8 @@ const configManager = require('./config-manager');
 const chromeSpawner = require('./chrome-spawner');
 const notifier = require('./notifier');
 
+const MAX_RECENT_RUNS = 20;
+
 class RunnerController {
   constructor() {
     this.daemon = null;
@@ -11,7 +13,6 @@ class RunnerController {
     this.lastError = null;
     this.recentRuns = [];
     this.onStatusChangeCallbacks = [];
-    this._heartbeatTimer = null;
   }
 
   onStatusChange(cb) {
@@ -35,6 +36,49 @@ class RunnerController {
       activeRun: this.activeRun,
       lastError: this.lastError,
       recentRuns: this.recentRuns.slice(0, 5),
+    };
+  }
+
+  _addRecentRun(run) {
+    this.recentRuns.unshift(run);
+    if (this.recentRuns.length > MAX_RECENT_RUNS) {
+      this.recentRuns.length = MAX_RECENT_RUNS;
+    }
+  }
+
+  _summarizeRunResult(run, result) {
+    const workflowName = result?.workflowName || 'Portal Automation';
+    const itemsDownloaded = Number.isFinite(result?.itemsDownloaded) ? result.itemsDownloaded : 0;
+    const completedAt = new Date().toISOString();
+    const rawStatus = typeof result?.status === 'string' ? result.status.toLowerCase() : '';
+
+    if (rawStatus === 'cancelled' || rawStatus === 'canceled') {
+      return {
+        id: run.id,
+        workflowName,
+        status: 'cancelled',
+        itemsDownloaded,
+        completedAt,
+      };
+    }
+
+    if (result?.success === false) {
+      return {
+        id: run.id,
+        workflowName,
+        status: 'failed',
+        itemsDownloaded,
+        error: result.error || 'Run finished without success',
+        completedAt,
+      };
+    }
+
+    return {
+      id: run.id,
+      workflowName,
+      status: 'completed',
+      itemsDownloaded,
+      completedAt,
     };
   }
 
@@ -71,7 +115,7 @@ class RunnerController {
       // 2. Initialize daemon with custom logger forwarding to desktop UI
       this.daemon = new RunnerDaemon({
         cloudClient,
-        cdpPort: 9222,
+        cdpPort: chromeSpawner.port,
         targetFolder: config.targetFolder,
         pollIntervalMs: 3000,
         logger: {
@@ -99,21 +143,21 @@ class RunnerController {
           const currentConfig = configManager.get();
           await chromeSpawner.ensureChrome(currentConfig.browserMode || 'visible');
 
+          // ReFlow may have fallen back to another port if 9222 was taken.
+          this.daemon.cdpPort = chromeSpawner.port;
+
           const result = await originalExecuteRun(run);
 
-          const completedRun = {
-            id: run.id,
-            workflowName: result?.workflowName || 'Portal Automation',
-            status: 'completed',
-            itemsDownloaded: result?.itemsDownloaded || 0,
-            completedAt: new Date().toISOString(),
-          };
-
-          this.recentRuns.unshift(completedRun);
+          const finishedRun = this._summarizeRunResult(run, result);
+          this._addRecentRun(finishedRun);
           this.activeRun = null;
           this._notifyStatus();
 
-          notifier.notifyRunCompleted(completedRun.workflowName, completedRun.itemsDownloaded);
+          if (finishedRun.status === 'completed') {
+            notifier.notifyRunCompleted(finishedRun.workflowName, finishedRun.itemsDownloaded);
+          } else if (finishedRun.status === 'failed') {
+            notifier.notifyRunFailed(finishedRun.workflowName, finishedRun.error);
+          }
           return result;
         } catch (err) {
           const failedRun = {
@@ -124,7 +168,7 @@ class RunnerController {
             completedAt: new Date().toISOString(),
           };
 
-          this.recentRuns.unshift(failedRun);
+          this._addRecentRun(failedRun);
           this.activeRun = null;
           this._notifyStatus();
 
@@ -133,7 +177,8 @@ class RunnerController {
         }
       };
 
-      // Start polling & send initial heartbeat (daemon runs its own 10s heartbeat cycle)
+      // Start polling. The daemon owns its heartbeat cycle; this controller
+      // does not run a separate timer.
       this.daemon.start().catch((err) => {
         console.error('Daemon polling error:', err);
       });
@@ -142,10 +187,6 @@ class RunnerController {
       this._notifyStatus();
       return this.getState();
     } catch (err) {
-      if (this._heartbeatTimer) {
-        clearInterval(this._heartbeatTimer);
-        this._heartbeatTimer = null;
-      }
       this.status = 'error';
       this.lastError = err.message;
       this._notifyStatus();
@@ -154,11 +195,6 @@ class RunnerController {
   }
 
   async stop() {
-    if (this._heartbeatTimer) {
-      clearInterval(this._heartbeatTimer);
-      this._heartbeatTimer = null;
-    }
-
     if (this.status === 'idle') return this.getState();
 
     this.status = 'stopping';

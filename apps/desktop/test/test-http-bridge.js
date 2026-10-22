@@ -18,6 +18,8 @@
 const http = require('http');
 const assert = require('assert');
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
 
 // Standard module resolution relative to workspace root
 const candidatePaths = [
@@ -36,6 +38,8 @@ for (const p of candidatePaths) {
 require('module').Module._initPaths();
 
 const httpBridge = require('../src/main/http-bridge');
+const runnerController = require('../src/main/runner-controller');
+const chromeSpawner = require('../src/main/chrome-spawner');
 
 function makeRequest(options, body = null) {
   return new Promise((resolve, reject) => {
@@ -164,6 +168,51 @@ async function runTests() {
     assert.notStrictEqual(res.headers['access-control-allow-origin'], 'https://arbitrary-attacker.vercel.app');
   });
 
+  // 5c. OPTIONS preflight from an untrusted reflow.io subdomain
+  await test('OPTIONS preflight from an untrusted reflow.io subdomain is not allowed', async () => {
+    const res = await makeRequest({
+      method: 'OPTIONS',
+      path: '/health',
+      headers: {
+        Origin: 'https://attacker.reflow.io',
+        'Access-Control-Request-Method': 'GET',
+      },
+    });
+
+    assert.strictEqual(res.statusCode, 204);
+    assert.notStrictEqual(res.headers['access-control-allow-origin'], 'https://attacker.reflow.io');
+  });
+
+  // 5d. OPTIONS preflight from localhost on a non-app port
+  await test('OPTIONS preflight from localhost on a non-app port is not allowed', async () => {
+    const res = await makeRequest({
+      method: 'OPTIONS',
+      path: '/health',
+      headers: {
+        Origin: 'http://localhost:8080',
+        'Access-Control-Request-Method': 'GET',
+      },
+    });
+
+    assert.strictEqual(res.statusCode, 204);
+    assert.notStrictEqual(res.headers['access-control-allow-origin'], 'http://localhost:8080');
+  });
+
+  // 5e. OPTIONS preflight from the bridge's own origin
+  await test('OPTIONS preflight from the bridge origin on 127.0.0.1:49152 is allowed', async () => {
+    const res = await makeRequest({
+      method: 'OPTIONS',
+      path: '/health',
+      headers: {
+        Origin: 'http://127.0.0.1:49152',
+        'Access-Control-Request-Method': 'GET',
+      },
+    });
+
+    assert.strictEqual(res.statusCode, 204);
+    assert.strictEqual(res.headers['access-control-allow-origin'], 'http://127.0.0.1:49152');
+  });
+
   // 6. GET /health
   await test('GET /health returns 200 with status ok and CORS headers', async () => {
     const res = await makeRequest({
@@ -225,6 +274,22 @@ async function runTests() {
     assert.strictEqual(res.json.isRecording, false);
     assert.strictEqual(res.json.completedRecording, true);
     assert.ok(Array.isArray(res.json.actions));
+  });
+
+  // 9b. Oversized request body is rejected with 413
+  await test('POST /record/start rejects a body over 1 MB with 413', async () => {
+    const oversizedBody = JSON.stringify({ name: 'x'.repeat(1024 * 1024 + 1024) });
+    const res = await makeRequest({
+      method: 'POST',
+      path: '/record/start',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(oversizedBody),
+      },
+    }, oversizedBody);
+
+    assert.strictEqual(res.statusCode, 413);
+    assert.ok(res.json.error.includes('byte limit'));
   });
 
   // 10. 404 Route handling
@@ -331,6 +396,94 @@ async function runTests() {
   await test('Server closes cleanly and releases port', async () => {
     await httpBridge.stop();
     assert.strictEqual(httpBridge.server, null);
+  });
+
+  // 15. Listen failure cleanup (EADDRINUSE must not leave a dead server object)
+  await test('start() surfaces EADDRINUSE and clears the dead server object', async () => {
+    const blocker = http.createServer((req, res) => res.end('blocked'));
+    await new Promise((resolve, reject) => {
+      blocker.once('error', reject);
+      blocker.listen(49152, '127.0.0.1', resolve);
+    });
+
+    try {
+      await assert.rejects(() => httpBridge.start(), /EADDRINUSE/);
+      assert.strictEqual(httpBridge.server, null);
+    } finally {
+      await new Promise((resolve) => blocker.close(resolve));
+    }
+
+    await httpBridge.start();
+    assert.ok(httpBridge.server.listening);
+    await httpBridge.stop();
+    assert.strictEqual(httpBridge.server, null);
+  });
+
+  // 16. Runner result status mapping
+  await test('Runner results are mapped to completed, failed, and cancelled honestly', () => {
+    const run = { id: 'run-1', workflow_id: 'wf-1' };
+
+    const completed = runnerController._summarizeRunResult(run, {
+      success: true,
+      itemsDownloaded: 4,
+    });
+    assert.strictEqual(completed.status, 'completed');
+    assert.strictEqual(completed.itemsDownloaded, 4);
+
+    const cancelled = runnerController._summarizeRunResult(run, {
+      success: false,
+      status: 'cancelled',
+    });
+    assert.strictEqual(cancelled.status, 'cancelled');
+
+    const failed = runnerController._summarizeRunResult(run, {
+      success: false,
+      itemsDownloaded: 2,
+    });
+    assert.strictEqual(failed.status, 'failed');
+    assert.strictEqual(failed.itemsDownloaded, 2);
+    assert.ok(failed.error);
+  });
+
+  // 17. recentRuns is bounded
+  await test('recentRuns never grows beyond 20 entries', () => {
+    const originalRuns = runnerController.recentRuns;
+    runnerController.recentRuns = [];
+    try {
+      for (let i = 0; i < 30; i++) {
+        runnerController._addRecentRun({ id: `run-${i}`, status: 'completed' });
+      }
+      assert.strictEqual(runnerController.recentRuns.length, 20);
+      assert.strictEqual(runnerController.recentRuns[0].id, 'run-29');
+    } finally {
+      runnerController.recentRuns = originalRuns;
+    }
+  });
+
+  // 18. Chrome ownership marker gates adoption
+  await test('Chrome ownership marker only adopts a live ReFlow browser', () => {
+    const originalProfileDir = chromeSpawner.profileDir;
+    const originalPort = chromeSpawner.port;
+    const tempProfile = path.join(os.tmpdir(), `reflow-marker-test-${process.pid}-${Date.now()}`);
+    fs.mkdirSync(tempProfile, { recursive: true });
+    chromeSpawner.profileDir = tempProfile;
+    chromeSpawner.port = 49333;
+
+    try {
+      chromeSpawner._clearOwnershipMarker();
+      assert.strictEqual(chromeSpawner._isOwnedBrowser(), false);
+
+      chromeSpawner._writeOwnershipMarker(process.pid, 'visible');
+      assert.strictEqual(chromeSpawner._isOwnedBrowser(), true);
+
+      chromeSpawner._writeOwnershipMarker(999999, 'visible');
+      assert.strictEqual(chromeSpawner._isOwnedBrowser(), false);
+    } finally {
+      chromeSpawner._clearOwnershipMarker();
+      chromeSpawner.profileDir = originalProfileDir;
+      chromeSpawner.port = originalPort;
+      fs.rmSync(tempProfile, { recursive: true, force: true });
+    }
   });
 
   console.log(`\n========================================`);
