@@ -55,7 +55,7 @@ ReFlow is a production-ready SaaS platform for hybrid browser automation and RPA
 
 ## Monorepo Architecture Refactor (Phase 3A Legacy Purge)
 - **Elimination of Legacy Standalone Server in `packages/engine`**: Purged deprecated SQLite database (`db.js`), redundant Express/HTTP dashboard controllers (`/src/dashboard/`), and standalone auth controllers (`/src/auth/`). All web dashboard and SaaS operations now centrally live in Next.js (`apps/web`).
-- **Orphaned landing components in `apps/web`**: `FeatureTabSwitcher`, `HeroProductShowcase`, `ProductDemoSimulator`, `RobotMascot`, `ScrollProductShowcase`, and `VideoDemoModal` remain in `apps/web/src/components/landing/` but are not imported by any route; they are dead-code candidates for removal.
+- **Orphaned landing components in `apps/web`**: removed on 2026-10-22 in `88bebe6` on branch `chore/remove-dead-landing-components`. The twelve unreferenced files were `FeatureTabSwitcher`, `HeroProductShowcase`, `ProductDemoSimulator`, `RobotMascot`, `ScrollProductShowcase`, `VideoDemoModal`, `ProductLoopShowcase`, `DesktopRunnerShowcase`, `FeatureCapabilities`, `RunningTicker`, `SocialProofStrip`, and `WorkflowNodePipeline` (2,944 lines). The 9.15 MB `public/videos/landing-demo.mp4`, referenced only by `HeroProductShowcase` and `VideoDemoModal`, was deleted in the same commit. `ScrollReveal` remains because `PricingSection` and `RedesignedLandingPage` still use it.
 - **Standardized Environment Variables**: Standardized strictly on `REFLOW_CLOUD_URL`, `REFLOW_RUNNER_TOKEN`, and `REFLOW_TARGET_FOLDER` across engine CLI and runner daemon.
 
 ## Test Suites
@@ -94,7 +94,7 @@ Delivered for the Monday client test and pushed to `origin/main` (`b850c30..6aec
 - Removed the macOS download row: it advertised `ReFlow-Worker-1.0.0.dmg` but `/api/v1/runners/download?os=mac` has no asset and 302s to the GitHub release page.
 - Fixed the mobile scroll-story section, where the sticky card (~575px) covered the step copy in an 844px viewport; the card is now `lg:sticky` only.
 - Aligned copy with the product: dropped the cron-scheduling promise (no scheduler exists), "concurrent runner workers", "multi-iframe ERP traversal", "100% local privacy" (artifacts sync to Supabase Storage), and "24x faster". The selector-fallback claim was **kept**, because `packages/engine/src/shared/selector-resolver.js` implements weighted confidence scoring with a 0.70 threshold.
-- Added an honest "who this is for" band; did not wire `SocialProofStrip` because it contains fabricated testimonials.
+- Added an honest "who this is for" band; did not wire `SocialProofStrip` because it contains fabricated testimonials (the component was later deleted rather than shipped).
 - Page height 8,123 → 7,485px desktop, 10,479 → 9,762px mobile. Fixed `zinc-600` microcopy contrast and the H1→H3 heading skip.
 
 ### Verification status
@@ -103,8 +103,7 @@ Delivered for the Monday client test and pushed to `origin/main` (`b850c30..6aec
 ## Next Actions
 1. Maintain documentation integrity as features evolve.
 2. Consider adding optional local command authentication token on loopback bridge port `49152` (F-03 future hardening).
-3. Remove or wire up the orphaned landing components listed above.
-4. Expand workflow template library in `apps/web` with new pre-built RPA recipes.
-5. Visually verify the guided tours in a browser (spotlight geometry, card placement on the editor's full-bleed canvas) — still unverified.
-6. Resolve `F-04.3` in `test/security-tenant-auth.challenge.mjs`, the only remaining red in the web suite.
-7. Bring light mode onto the neutral surface ladder so it matches dark mode.
+3. Expand workflow template library in `apps/web` with new pre-built RPA recipes.
+4. Visually verify the guided tours in a browser (spotlight geometry, card placement on the editor's full-bleed canvas) — still unverified.
+5. Resolve `F-04.3` in `test/security-tenant-auth.challenge.mjs`, the only remaining red in the web suite.
+6. Bring light mode onto the neutral surface ladder so it matches dark mode.

@@ -90,7 +90,7 @@ real state.
    - Minimal text links without pills or underline bars.
    - High-contrast stark white pill CTA button (`Start Free ↗` / `Console ↗`).
 2. **Hero Presentation:**
-   - Excluded from the hero: 3D cartoon robot mascot, pulsing radial background orbs, animated scanlines. Legacy `RobotMascot` and `RobotAvatar` components still exist in the tree but are unreferenced by any route.
+   - Excluded from the hero: 3D cartoon robot mascot, pulsing radial background orbs, animated scanlines. The legacy landing `RobotMascot` was deleted on 2026-10-22. `RobotAvatar` is **not** dead code: it is imported by the dashboard shell, sidebar, and status badges.
    - Added: Large editorial headline, clean subtext, dual CTAs, and a precision browser automation frame with genuine window controls and real workflow steps.
 3. **Architectural Metrics Strip:**
    - 4-column connected hairline grid with `border-white/10` dividers.
