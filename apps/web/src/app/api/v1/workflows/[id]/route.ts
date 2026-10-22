@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRunnerOrUser } from '@/lib/auth/runner-auth';
 import { WorkflowDefinition } from '@/lib/types/database';
+import { normalizeLoopFlags } from '@/lib/workflows/loop-signals';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -118,7 +119,7 @@ export async function PATCH(
     }
 
     if (definitionModified) {
-      updatePayload.workflow_definition = updatedDefinition;
+      updatePayload.workflow_definition = normalizeLoopFlags(updatedDefinition);
     }
 
     const { data: updatedWorkflow, error: updateError } = await supabase

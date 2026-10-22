@@ -233,7 +233,7 @@ export function CreatePortalModal({
   };
 
   // Clean reset helper for all modal & desktop recorder state
-  const resetAllState = useCallback(async (alsoResetDesktop = true) => {
+  const resetAllState = useCallback(async () => {
     setRecordedActions([]);
     setActionCount(0);
     setCapturedRecipe(null);
@@ -247,12 +247,6 @@ export function CreatePortalModal({
     setJsonText('');
     setFormError(null);
     setSubmitting(false);
-
-    if (alsoResetDesktop) {
-      try {
-        await fetch('http://127.0.0.1:49152/record/reset', { method: 'POST' });
-      } catch {}
-    }
   }, []);
 
   // When modal opens fresh, guarantee clean state from scratch (deferred to avoid synchronous setState warning)
@@ -261,7 +255,7 @@ export function CreatePortalModal({
     if (isOpen && !prevIsOpenRef.current) {
       if (recordingPhase !== 'recording') {
         const timer = setTimeout(() => {
-          resetAllState(true);
+          resetAllState();
         }, 0);
         return () => clearTimeout(timer);
       }
@@ -368,14 +362,14 @@ export function CreatePortalModal({
     setFormError(null);
     setSubmitting(false);
     if (recordingPhase !== 'recording') {
-      await resetAllState(true);
+      await resetAllState();
     }
     onClose();
   }, [onClose, recordingPhase, resetAllState]);
 
   // Explicit cancel/reset recording session button handler
   const handleResetRecordingState = useCallback(async () => {
-    await resetAllState(true);
+    await resetAllState();
   }, [resetAllState]);
 
   // Close on Escape key
@@ -575,7 +569,7 @@ export function CreatePortalModal({
         const data = await res.json();
         const createdWf = data.workflow;
         onWorkflowCreated(createdWf);
-        await resetAllState(true);
+        await resetAllState();
         onClose();
         router.push(`/dashboard/workflows/${createdWf.id}/edit`);
         return;
@@ -601,7 +595,7 @@ export function CreatePortalModal({
       }
 
       onWorkflowCreated(wf as unknown as Workflow);
-      await resetAllState(true);
+      await resetAllState();
       onClose();
       router.push(`/dashboard/workflows/${wf.id}/edit`);
     } catch (err: unknown) {
@@ -840,9 +834,6 @@ export function CreatePortalModal({
 
     setRecordingPhase('starting');
     try {
-      // Clean stale desktop recorder buffer if any
-      await fetch('http://127.0.0.1:49152/record/reset', { method: 'POST' }).catch(() => {});
-
       const res = await fetch('http://127.0.0.1:49152/record/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -958,7 +949,7 @@ export function CreatePortalModal({
       if (res.ok) {
         const data = await res.json();
         onWorkflowCreated(data.workflow);
-        await resetAllState(true);
+        await resetAllState();
         onClose();
         return;
       }
@@ -981,7 +972,7 @@ export function CreatePortalModal({
       if (insertError) throw new Error(insertError.message);
 
       onWorkflowCreated(wf as unknown as Workflow);
-      await resetAllState(true);
+      await resetAllState();
       onClose();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to save workflow';

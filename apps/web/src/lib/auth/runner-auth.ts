@@ -21,7 +21,15 @@ const lastHeartbeatWriteCache = new Map<string, number>();
 
 function getServiceClient(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+
+  if (!url || !key) {
+    // Falling back to the anon key used to "work" only because RLS was off.
+    // RLS is now enabled, so an anon-key client silently returns no rows
+    // instead of failing. Refuse to run instead.
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for server-side tenant access');
+  }
+
   return createSupabaseClient(url, key, {
     auth: {
       persistSession: false,
@@ -109,11 +117,9 @@ export async function authenticateRunnerOrUser(request: NextRequest): Promise<Ru
       ? (rawMeta as Record<string, unknown>)
       : (typeof rawMeta === 'string' ? (() => { try { return JSON.parse(rawMeta); } catch { return {}; } })() : {});
 
-    const expectedHash = org.runner_token_hash || (meta.runner_token_hash as string) || (
-      meta.token && typeof meta.token === 'string'
-        ? crypto.createHash('sha256').update(meta.token).digest('hex')
-        : null
-    );
+    // Only the hash column is authoritative. Legacy copies of the token in
+    // runner_metadata (plaintext or hashed) are no longer written or trusted.
+    const expectedHash = org.runner_token_hash || null;
 
     if (!expectedHash) {
       return {
@@ -159,13 +165,15 @@ export async function authenticateRunnerOrUser(request: NextRequest): Promise<Ru
 
     if (shouldWriteHeartbeat) {
       try {
+        const safeMeta = { ...meta };
+        delete safeMeta.token;
+
         const mergedPayload = {
-          ...meta,
+          ...safeMeta,
           last_ping_at: new Date().toISOString(),
           hostname: incomingHostname || meta.hostname || 'unknown',
           platform: incomingPlatform || meta.platform || 'unknown',
           version: incomingVersion || meta.version || 'unknown',
-          token: runnerToken,
           cdp_active: incomingCdp !== null ? incomingCdp === 'true' : (meta.cdp_active ?? false),
         };
 
@@ -268,7 +276,7 @@ export async function authenticateRunnerOrUser(request: NextRequest): Promise<Ru
         authType: 'session_user',
         orgId,
         userId: user.id,
-        supabase: process.env.SUPABASE_SERVICE_ROLE_KEY ? client : serverSupabase,
+        supabase: client,
       },
     };
   } catch (err: unknown) {

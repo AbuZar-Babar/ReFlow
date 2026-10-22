@@ -118,9 +118,6 @@ export async function POST(request: NextRequest) {
     const currentDef = (existingWorkflow.workflow_definition && typeof existingWorkflow.workflow_definition === 'object')
       ? existingWorkflow.workflow_definition as Record<string, unknown>
       : {};
-    const currentFilterRules = (existingWorkflow.filter_rules && typeof existingWorkflow.filter_rules === 'object')
-      ? existingWorkflow.filter_rules as Record<string, unknown>
-      : {};
 
     const steps = Array.isArray(currentDef.steps) && currentDef.steps.length > 0
       ? currentDef.steps
@@ -163,30 +160,9 @@ export async function POST(request: NextRequest) {
       ? explicitItemFilter
       : (currentDef.itemFilter !== undefined ? currentDef.itemFilter : null);
 
-    // Update workflow definition and filter rules with current execution configuration
-    const updatedDef: Record<string, unknown> = {
-      ...currentDef,
-      mode,
-      isLoop,
-      loopStepIndex: (loopStepIndex !== null && loopStepIndex !== undefined) ? loopStepIndex : null,
-      loopLimit: (loopLimit !== null && loopLimit !== undefined) ? loopLimit : null,
-      itemFilter: itemFilter || null,
-    };
-
-    const updatedFilterRules: Record<string, unknown> = {
-      ...currentFilterRules,
-      itemFilter: itemFilter || null,
-    };
-
-    await supabase
-      .from('wf_workflows')
-      .update({
-        workflow_definition: updatedDef,
-        filter_rules: updatedFilterRules,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', workflow_id)
-      .eq('org_id', orgId);
+    // The execution configuration is stored on the run row below. It is
+    // deliberately NOT written back to the workflow: a one-off run used to
+    // permanently rewrite the published workflow for every other user.
 
     const { data: newRun, error } = await supabase
       .from('wf_execution_runs')

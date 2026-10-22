@@ -12,7 +12,7 @@ export default function OnboardingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState('');
-  const [tier, setTier] = useState<'starter' | 'professional' | 'enterprise'>('professional');
+  const [tier, setTier] = useState<'starter' | 'pro' | 'enterprise'>('pro');
 
   useEffect(() => {
     async function checkExistingOrg() {
@@ -170,13 +170,13 @@ export default function OnboardingPage() {
               <div className="grid grid-cols-3 gap-3">
                 {[
                   { id: 'starter', label: 'Starter', steps: '25k steps/mo' },
-                  { id: 'professional', label: 'Pro', steps: '150k steps/mo', recommended: true },
+                  { id: 'pro', label: 'Pro', steps: '150k steps/mo', recommended: true },
                   { id: 'enterprise', label: 'Enterprise', steps: '500k+ steps/mo' },
                 ].map((plan) => (
                   <button
                     key={plan.id}
                     type="button"
-                    onClick={() => setTier(plan.id as 'starter' | 'professional' | 'enterprise')}
+                    onClick={() => setTier(plan.id as 'starter' | 'pro' | 'enterprise')}
                     className={`relative p-3 rounded-xl border text-left transition cursor-pointer ${
                       tier === plan.id
                         ? 'border-white bg-white/10 text-white shadow-md'

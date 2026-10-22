@@ -1,9 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { authenticateRunnerOrUser } from '@/lib/auth/runner-auth';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { authenticateRunnerOrUser, RunnerAuthContext } from '@/lib/auth/runner-auth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+
+/**
+ * Runner-token rotation and revocation are workspace-admin operations. A
+ * runner token itself must never be able to rotate its own credentials.
+ */
+async function requireOrgAdmin(
+  supabase: SupabaseClient,
+  orgId: string,
+  context: RunnerAuthContext,
+): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  if (context.authType !== 'session_user' || !context.userId) {
+    return { ok: false, status: 403, error: 'Only a signed-in workspace admin can manage runner tokens' };
+  }
+
+  const { data } = await supabase
+    .from('wf_organization_members')
+    .select('role')
+    .eq('org_id', orgId)
+    .eq('user_id', context.userId)
+    .maybeSingle();
+
+  if (!data || (data.role !== 'owner' && data.role !== 'admin')) {
+    return { ok: false, status: 403, error: 'Only a workspace owner or admin can manage runner tokens' };
+  }
+
+  return { ok: true };
+}
 
 interface RegisteredWorkerMetadata {
   id?: string;
@@ -67,28 +95,9 @@ export async function GET(request: NextRequest) {
     const diffSeconds = lastPingMs > 0 ? (Date.now() - lastPingMs) / 1000 : 999999;
     const isOnline = diffSeconds < 60 && runnerMeta.token_revoked !== true;
 
-    // Use existing token if valid rf_live_ format, otherwise generate and persist initial token & hash
-    let pairedToken = runnerMeta.token;
-    if (runnerMeta.token_revoked !== true && (!pairedToken || !pairedToken.startsWith('rf_live_') || !org.runner_token_hash)) {
-      const rawOrgHex = orgId.replace(/-/g, '').slice(0, 16);
-      const secretHex = crypto.randomBytes(16).toString('hex');
-      pairedToken = `rf_live_${rawOrgHex}_${secretHex}`;
-      const tokenHash = crypto.createHash('sha256').update(pairedToken).digest('hex');
-
-      runnerMeta = {
-        ...runnerMeta,
-        token: pairedToken,
-        token_revoked: false,
-      };
-
-      await supabase
-        .from('wf_organizations')
-        .update({
-          runner_token_hash: tokenHash,
-          runner_metadata: runnerMeta,
-        })
-        .eq('id', orgId);
-    }
+    // The raw token is never stored or served again. A pairing token is shown
+    // once in the rotate/generate response; after that only its hash exists.
+    const hasToken = Boolean(org.runner_token_hash);
 
     const registeredWorkers = Array.isArray(runnerMeta.workers) ? runnerMeta.workers : [];
     const runners = registeredWorkers.length > 0
@@ -100,7 +109,6 @@ export async function GET(request: NextRequest) {
             id: worker.id || `runner_${index + 1}`,
             hostname: worker.hostname || 'Unknown desktop',
             label: worker.hostname || 'Desktop runner',
-            token: pairedToken,
             platform: worker.platform || 'unknown',
             engineVersion: worker.version || 'unknown',
             status: runnerMeta.token_revoked || worker.token_revoked ? 'REVOKED' : workerOnline ? 'ONLINE' : 'OFFLINE',
@@ -112,7 +120,6 @@ export async function GET(request: NextRequest) {
           id: 'runner_primary',
           hostname: runnerMeta.hostname || (isOnline ? 'Active Desktop Runner' : 'unknown'),
           label: 'Primary Desktop Runner',
-          token: pairedToken,
           platform: runnerMeta.platform || 'unknown',
           engineVersion: runnerMeta.version || 'unknown',
           status: runnerMeta.token_revoked ? 'REVOKED' : (isOnline ? 'ONLINE' : 'OFFLINE'),
@@ -126,6 +133,7 @@ export async function GET(request: NextRequest) {
       {
         success: true,
         is_online: anyWorkerOnline,
+        token_configured: hasToken,
         diff_seconds: Math.round(diffSeconds),
         runners,
       },
@@ -147,7 +155,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  const { orgId, supabase, token } = auth.context;
+  const { orgId, supabase } = auth.context;
 
   let body: (Partial<RunnerMetadata> & { action?: string }) = {};
   try {
@@ -174,18 +182,26 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Strip any legacy plaintext token before it is merged back into storage.
+  const cleanMeta: RunnerMetadata = { ...existingMeta };
+  delete cleanMeta.token;
+
   // Handle Token Rotation Action
   if (body.action === 'rotate' || body.action === 'generate') {
+    const admin = await requireOrgAdmin(supabase, orgId, auth.context);
+    if (!admin.ok) {
+      return NextResponse.json({ error: admin.error }, { status: admin.status });
+    }
+
     const rawOrgHex = orgId.replace(/-/g, '').slice(0, 16);
     const secretHex = crypto.randomBytes(16).toString('hex');
     const newToken = `rf_live_${rawOrgHex}_${secretHex}`;
     const newHash = crypto.createHash('sha256').update(newToken).digest('hex');
 
     const updatedMeta = {
-      ...existingMeta,
-      token: newToken,
+      ...cleanMeta,
       token_revoked: false,
-      workers: Array.isArray(existingMeta.workers) ? existingMeta.workers.map((worker) => ({ ...worker, token_revoked: true })) : existingMeta.workers,
+      workers: Array.isArray(cleanMeta.workers) ? cleanMeta.workers.map((worker) => ({ ...worker, token_revoked: true })) : cleanMeta.workers,
       rotated_at: new Date().toISOString(),
     };
 
@@ -210,8 +226,13 @@ export async function POST(request: NextRequest) {
 
   // Handle Token Revocation Action
   if (body.action === 'revoke') {
+    const admin = await requireOrgAdmin(supabase, orgId, auth.context);
+    if (!admin.ok) {
+      return NextResponse.json({ error: admin.error }, { status: admin.status });
+    }
+
     const updatedMeta = {
-      ...existingMeta,
+      ...cleanMeta,
       token_revoked: true,
       revoked_at: new Date().toISOString(),
     };
@@ -258,17 +279,13 @@ export async function POST(request: NextRequest) {
     ...existingWorkers.filter((worker) => worker.id !== stableIdentity),
     workerRecord,
   ];
-  const rawOrgHex = orgId.replace(/-/g, '').slice(0, 16);
-  const fallbackToken = existingMeta.token || `rf_live_${rawOrgHex}_${crypto.randomBytes(16).toString('hex')}`;
-
   const payload: RunnerMetadata = {
-    ...existingMeta,
+    ...cleanMeta,
     // Keep legacy top-level fields in sync while new clients migrate to the workers registry.
     last_ping_at: timestamp,
     hostname,
     platform,
     version,
-    token: token || (typeof body.token === 'string' ? body.token : fallbackToken),
     cdp_active: body.cdp_active === true,
     workers: nextWorkers,
   };

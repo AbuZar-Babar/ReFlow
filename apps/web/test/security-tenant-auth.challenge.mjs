@@ -107,7 +107,6 @@ describe('Security & Tenant Auth Challenge (F-01, F-02, F-04)', () => {
     const runsRouteCode = fs.readFileSync(runsRoutePath, 'utf8');
     const workflowsRouteCode = fs.readFileSync(workflowsRoutePath, 'utf8');
     const runnersRouteCode = fs.readFileSync(runnersRoutePath, 'utf8');
-    const diagnosticsRouteCode = fs.readFileSync(diagnosticsRoutePath, 'utf8');
 
     test('F-02.1: POST /api/v1/runs forbids body.org_id override and auto-stub creation', () => {
       assert.ok(
@@ -150,24 +149,13 @@ describe('Security & Tenant Auth Challenge (F-01, F-02, F-04)', () => {
       );
     });
 
-    test('F-02.4: /api/v1/runners/diagnostics enforces authentication and prevents arbitrary port SSRF', () => {
-      // Must enforce auth at entry
-      assert.ok(
-        diagnosticsRouteCode.includes('authenticateRunnerOrUser'),
-        'diagnostics route must invoke authenticateRunnerOrUser'
-      );
-      assert.ok(
-        !diagnosticsRouteCode.includes("tokenStatus = 'missing_or_invalid'"),
-        'diagnostics route must NOT permit unauthenticated execution with missing_or_invalid status'
-      );
-      // Must lock port to 9222 and prevent SSRF
-      assert.ok(
-        !diagnosticsRouteCode.includes("searchParams.get('port')"),
-        'GET /diagnostics must not read arbitrary port from searchParams'
-      );
-      assert.ok(
-        !diagnosticsRouteCode.includes('body.target_port') && !diagnosticsRouteCode.includes('body.port'),
-        'POST /diagnostics must not read arbitrary port from request body'
+    test('F-02.4: the unconsumed diagnostics endpoint has been removed', () => {
+      // The route had no caller in the repo, probed the server's own
+      // localhost:9222, and hardcoded token.valid = true. It was dead code.
+      assert.equal(
+        fs.existsSync(diagnosticsRoutePath),
+        false,
+        '/api/v1/runners/diagnostics must not exist; nothing consumed it'
       );
     });
   });
@@ -221,9 +209,15 @@ describe('Security & Tenant Auth Challenge (F-01, F-02, F-04)', () => {
         !runnersPageCode.includes('ps_live_'),
         'dashboard/runners/page.tsx must NOT contain ps_live_'
       );
+      // The raw token must never be embedded in the client bundle or fabricated
+      // from the org id. It is only shown once, from the rotate response.
       assert.ok(
-        runnersPageCode.includes('rf_live_'),
-        'dashboard/runners/page.tsx must use rf_live_'
+        !runnersPageCode.includes('rf_live_'),
+        'dashboard/runners/page.tsx must NOT synthesize or embed a raw rf_live_ token'
+      );
+      assert.ok(
+        runnersPageCode.includes('token_configured'),
+        'dashboard/runners/page.tsx must read token_configured from the API'
       );
     });
 
@@ -251,9 +245,15 @@ describe('Security & Tenant Auth Challenge (F-01, F-02, F-04)', () => {
         !dashboardContextCode.includes('ps_live_'),
         'DashboardContext.tsx must NOT contain ps_live_'
       );
+      // The browser must not hold or send the runner token; it authenticates
+      // with the session cookie instead.
       assert.ok(
-        dashboardContextCode.includes('rf_live_'),
-        'DashboardContext.tsx must use rf_live_'
+        !dashboardContextCode.includes('rf_live_'),
+        'DashboardContext.tsx must NOT synthesize a raw rf_live_ token'
+      );
+      assert.ok(
+        !dashboardContextCode.includes("'x-runner-token'"),
+        'DashboardContext.tsx must not authenticate as the runner'
       );
     });
   });

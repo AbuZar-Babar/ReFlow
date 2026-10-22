@@ -266,18 +266,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         applyThemeToDOM(orgPalette, resolvedMode);
       }
 
-      const defaultToken = (parsedMeta.token as string) || `rf_live_${activeOrgId.replace(/-/g, '').slice(0, 16)}`;
-      setRunnerToken(defaultToken);
+      // The raw runner token is no longer stored or readable from the browser.
+      setRunnerToken(null);
 
       // Check online status via /api/v1/runners (authenticated by token) or organization metadata
       let online = false;
       try {
         const res = await fetch(`/api/v1/runners`, {
           cache: 'no-store',
-          headers: {
-            'x-runner-token': defaultToken,
-            'Authorization': `Bearer ${defaultToken}`,
-          },
         });
         if (res.ok) {
           const data = await res.json();
@@ -316,17 +312,12 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     }
 
     const supabase = createClient();
-    const resolvedToken = runnerToken || `rf_live_${orgId.replace(/-/g, '').slice(0, 16)}`;
 
     // Heartbeat poller for runner status every 5 seconds with direct DB fallback
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`/api/v1/runners`, {
           cache: 'no-store',
-          headers: {
-            'x-runner-token': resolvedToken,
-            'Authorization': `Bearer ${resolvedToken}`,
-          },
         });
         if (res.ok) {
           const data = await res.json();

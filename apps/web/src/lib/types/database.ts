@@ -13,7 +13,7 @@ export interface Organization {
   created_at: string;
   stripe_customer_id?: string | null;
   stripe_subscription_id?: string | null;
-  plan_tier: 'starter' | 'pro' | 'business';
+  plan_tier: 'starter' | 'pro' | 'business' | 'enterprise';
 }
 
 export interface OrganizationMember {

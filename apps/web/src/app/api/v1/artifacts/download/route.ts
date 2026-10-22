@@ -32,7 +32,9 @@ export async function GET(request: NextRequest) {
   }
 
   const runOrgId = (artifact as unknown as { wf_execution_runs?: { org_id?: string } })?.wf_execution_runs?.org_id;
-  if (runOrgId && runOrgId !== orgId) {
+  // Fail closed: an artifact whose owning run cannot be resolved must not be
+  // served. The previous check skipped authorization when the join was null.
+  if (!runOrgId || runOrgId !== orgId) {
     return NextResponse.json(
       { error: 'Unauthorized: Artifact belongs to a different organization' },
       { status: 403 }

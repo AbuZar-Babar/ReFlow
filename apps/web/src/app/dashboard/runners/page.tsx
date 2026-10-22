@@ -55,6 +55,7 @@ export default function RunnersPage() {
 
   // Active token state & local overrides
   const [currentToken, setCurrentToken] = useState<string>('');
+const [tokenConfigured, setTokenConfigured] = useState<boolean>(false);
   const [isTokenRevoked, setIsTokenRevoked] = useState<boolean>(false);
   const [isTokenMasked, setIsTokenMasked] = useState<boolean>(true);
   const [copiedToken, setCopiedToken] = useState<boolean>(false);
@@ -159,9 +160,8 @@ export default function RunnersPage() {
         if (res.ok) {
           const json = await res.json();
           if (json.runners && Array.isArray(json.runners) && json.runners.length > 0) {
-            const serverToken = json.runners.find((runner: { token?: string }) => typeof runner.token === 'string')?.token;
-            if (serverToken) setCurrentToken(serverToken);
-            apiRunners = json.runners.map((r: { id?: string; hostname?: string; label?: string; token?: string; platform?: string; engineVersion?: string; status?: string; lastPingAt?: string | null; cdpActive?: boolean }, idx: number) => {
+            if (json.token_configured === true) setTokenConfigured(true);
+            apiRunners = json.runners.map((r: { id?: string; hostname?: string; label?: string; platform?: string; engineVersion?: string; status?: string; lastPingAt?: string | null; cdpActive?: boolean }, idx: number) => {
               const lastPingMs = r.lastPingAt ? new Date(r.lastPingAt).getTime() : 0;
               const diffSeconds = lastPingMs > 0 ? (Date.now() - lastPingMs) / 1000 : 999999;
               const isOnline = diffSeconds >= 0 && diffSeconds < 60 && r.status !== 'REVOKED';
@@ -179,7 +179,7 @@ export default function RunnersPage() {
                 id: r.id || `runner-${idx}`,
                 hostname: r.hostname || 'unknown',
                 label: r.label || 'Primary Desktop Runner',
-                token: r.token || '',
+                token: '',
                 platform: r.platform || 'unknown',
                 engineVersion: r.engineVersion || 'unknown',
                 claimsCount: Math.max(0, claimsCount),
@@ -222,13 +222,14 @@ export default function RunnersPage() {
                 status = 'ONLINE';
               }
 
-              if (typeof meta.token === 'string') setCurrentToken(meta.token);
+              if (meta.token_revoked === true) setIsTokenRevoked(true);
+              if (orgDirect.runner_token_hash) setTokenConfigured(true);
               apiRunners = [
                 {
                   id: 'runner_primary',
                   hostname: meta.hostname || 'unknown',
                   label: 'Primary Desktop Runner',
-                  token: typeof meta.token === 'string' ? meta.token : '',
+                  token: '',
                   platform: meta.platform || 'unknown',
                   engineVersion: meta.version || 'unknown',
                   claimsCount: Math.max(0, claimsCount),
@@ -310,29 +311,7 @@ export default function RunnersPage() {
         }
       });
 
-    // Channel 2: Listen to runner token updates (with fallback guard)
-    let tokenChannel: ReturnType<typeof supabase.channel> | null = null;
-    try {
-      tokenChannel = supabase
-        .channel(`wf_runner_tokens_telemetry_${orgId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'wf_runner_tokens',
-            filter: `org_id=eq.${orgId}`,
-          },
-          () => {
-            void fetchWorkersAndRuns();
-          }
-        )
-        .subscribe();
-    } catch {
-      // Ignored if table not in replication publication
-    }
-
-    // Channel 3: Listen to organization heartbeat / runner metadata updates
+    // Channel 2: Listen to organization heartbeat / runner metadata updates
     let orgChannel: ReturnType<typeof supabase.channel> | null = null;
     try {
       orgChannel = supabase
@@ -357,9 +336,6 @@ export default function RunnersPage() {
     return () => {
       setRealtimeConnected(false);
       void supabase.removeChannel(runsChannel);
-      if (tokenChannel) {
-        void supabase.removeChannel(tokenChannel);
-      }
       if (orgChannel) {
         void supabase.removeChannel(orgChannel);
       }
@@ -481,6 +457,7 @@ export default function RunnersPage() {
       if (!newToken) throw new Error('The server did not return a new pairing token. Please try again.');
 
       setCurrentToken(newToken);
+      setTokenConfigured(true);
       setIsTokenRevoked(false);
       setShowRegenModal(false);
       setRegenConfirmChecked(false);
@@ -513,6 +490,8 @@ export default function RunnersPage() {
       if (!res.ok) throw new Error(`Token revocation failed (${res.status}). Please try again.`);
 
       setIsTokenRevoked(true);
+      setCurrentToken('');
+      setTokenConfigured(false);
       setShowRevokeModal(false);
       setActionSuccessNotice('Pairing token revoked. Desktop runners will need a new token to reconnect.');
       setTimeout(() => setActionSuccessNotice(null), 6000);
@@ -643,7 +622,11 @@ export default function RunnersPage() {
                   >
                     {isTokenMasked && currentToken
                       ? `${currentToken.slice(0, 10)}${'•'.repeat(24)}${currentToken.slice(-4)}`
-                      : currentToken || 'Generating token...'}
+                      : currentToken || (isTokenRevoked
+                          ? 'Token revoked'
+                          : tokenConfigured
+                            ? '•••••••••••••••• (hidden — regenerate to reveal)'
+                            : 'No token issued yet — regenerate to create one')}
                   </span>
                 </div>
 
@@ -891,9 +874,9 @@ No desktop has checked in recently. Open ReFlow Desktop, paste the workspace tok
                     </div>
 
                     <div>
-                      <span className="text-slate-500 block text-[10px]">Paired Token</span>
+                      <span className="text-slate-500 block text-[10px]">Worker ID</span>
                       <span className="text-cyan-400/90 font-mono font-medium block mt-0.5">
-                        ...{worker.token.slice(-8)}
+                        ...{worker.id.slice(-8)}
                       </span>
                     </div>
                   </div>
@@ -962,7 +945,7 @@ No desktop has checked in recently. Open ReFlow Desktop, paste the workspace tok
               <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5 [scrollbar-color:rgb(71_85_105)_rgb(12_16_29)] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-slate-950 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-600 hover:[&::-webkit-scrollbar-thumb]:bg-slate-500">
             <ol className="space-y-4">
               <li className="flex items-start gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-cyan-500/20 bg-cyan-500/10 text-xs font-bold text-cyan-300">1</span><div><p className="text-sm font-semibold text-white">Open ReFlow Desktop</p><p className="text-sm text-slate-400 mt-1">On the computer you want to connect, open the desktop app and go to its workspace pairing settings.</p></div></li>
-              <li className="flex items-start gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-cyan-500/20 bg-cyan-500/10 text-xs font-bold text-cyan-300">2</span><div><p className="text-sm font-semibold text-white">Copy your workspace token</p><p className="text-sm text-slate-400 mt-1">Copy the token from this page, then paste it into ReFlow Desktop. Keep the token private.</p><button type="button" onClick={() => { setShowPairingHelp(false); document.getElementById('pairing-token')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} className="mt-2 text-sm font-semibold text-cyan-300 hover:text-cyan-200">Go to pairing token <span aria-hidden="true">→</span></button></div></li>
+              <li className="flex items-start gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-cyan-500/20 bg-cyan-500/10 text-xs font-bold text-cyan-300">2</span><div><p className="text-sm font-semibold text-white">Copy your workspace token</p><p className="text-sm text-slate-400 mt-1">Use Regenerate Token to issue a pairing token, then copy it immediately — it is shown only once. Paste it into ReFlow Desktop and keep it private.</p><button type="button" onClick={() => { setShowPairingHelp(false); document.getElementById('pairing-token')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} className="mt-2 text-sm font-semibold text-cyan-300 hover:text-cyan-200">Go to pairing token <span aria-hidden="true">→</span></button></div></li>
               <li className="flex items-start gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-cyan-500/20 bg-cyan-500/10 text-xs font-bold text-cyan-300">3</span><div><p className="text-sm font-semibold text-white">Start the runner</p><p className="text-sm text-slate-400 mt-1">Choose Connect or Start in ReFlow Desktop. Keep the app open while it connects.</p></div></li>
             </ol>
             <div className="rounded-xl border border-white/10 bg-slate-950/70 p-4 space-y-2">

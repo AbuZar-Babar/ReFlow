@@ -1,8 +1,83 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import dns from 'node:dns/promises';
+import net from 'node:net';
 import { authenticateRunnerOrUser } from '@/lib/auth/runner-auth';
 
 export const dynamic = 'force-dynamic';
+
+const MAX_REDIRECTS = 3;
+
+class BlockedDestinationError extends Error {}
+
+function isBlockedIPv4(ip: string): boolean {
+  const parts = ip.split('.').map(Number);
+  if (parts.length !== 4 || parts.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) return true;
+  const [a, b] = parts;
+  if (a === 0) return true;                       // 0.0.0.0/8
+  if (a === 10) return true;                      // 10.0.0.0/8
+  if (a === 127) return true;                     // loopback
+  if (a === 169 && b === 254) return true;        // link-local + cloud metadata
+  if (a === 172 && b >= 16 && b <= 31) return true; // 172.16.0.0/12
+  if (a === 192 && b === 168) return true;        // 192.168.0.0/16
+  if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT
+  if (a === 192 && b === 0) return true;          // 192.0.0.0/24
+  if (a === 198 && (b === 18 || b === 19)) return true; // benchmarking
+  if (a >= 224) return true;                      // multicast + reserved
+  return false;
+}
+
+function isBlockedIPv6(ip: string): boolean {
+  const addr = ip.toLowerCase();
+  if (addr === '::' || addr === '::1') return true;
+  if (addr.startsWith('fe80')) return true;       // link-local
+  if (addr.startsWith('fc') || addr.startsWith('fd')) return true; // fc00::/7
+  if (addr.startsWith('ff')) return true;         // multicast
+  if (addr.startsWith('::ffff:')) return isBlockedIPv4(addr.slice(7));
+  return false;
+}
+
+/**
+ * Rejects destinations that resolve to private, loopback, link-local or
+ * reserved addresses. Called again for every redirect hop.
+ */
+async function assertPublicDestination(target: URL): Promise<void> {
+  const host = target.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+
+  if (!host) throw new BlockedDestinationError('Destination has no hostname');
+  if (
+    host === 'localhost' ||
+    host.endsWith('.localhost') ||
+    host.endsWith('.local') ||
+    host.endsWith('.internal')
+  ) {
+    throw new BlockedDestinationError('Webhook destination cannot be a private hostname');
+  }
+
+  if (net.isIP(host)) {
+    const blocked = net.isIPv4(host) ? isBlockedIPv4(host) : isBlockedIPv6(host);
+    if (blocked) throw new BlockedDestinationError('Webhook destination cannot be a private or loopback IP address');
+    return;
+  }
+
+  let records: { address: string; family: number }[];
+  try {
+    records = await dns.lookup(host, { all: true, verbatim: true });
+  } catch {
+    throw new BlockedDestinationError('Webhook destination hostname could not be resolved');
+  }
+
+  if (!records.length) {
+    throw new BlockedDestinationError('Webhook destination hostname could not be resolved');
+  }
+
+  for (const record of records) {
+    const blocked = record.family === 4 ? isBlockedIPv4(record.address) : isBlockedIPv6(record.address);
+    if (blocked) {
+      throw new BlockedDestinationError('Webhook destination resolves to a private or loopback address');
+    }
+  }
+}
 
 interface WebhookTestRequestBody {
   url: string;
@@ -108,31 +183,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (process.env.NODE_ENV === 'production') {
-      const hostname = parsedUrl.hostname.toLowerCase();
-      const isPrivateOrLoopback =
-        hostname === 'localhost' ||
-        hostname === '127.0.0.1' ||
-        hostname === '169.254.169.254' ||
-        hostname.startsWith('10.') ||
-        hostname.startsWith('192.168.');
-
-      if (isPrivateOrLoopback) {
-        return NextResponse.json(
-          {
-            success: false,
-            status: 400,
-            statusText: 'Bad Request',
-            latency_ms: 0,
-            latencyMs: 0,
-            reachable: false,
-            error: 'Invalid Destination',
-            message: 'Webhook destination cannot resolve to private or loopback IP addresses.',
-          },
-          { status: 400 }
-        );
-      }
-    }
+    // Validate the destination in every environment. Development machines can
+    // reach production networks too, so this is not gated on NODE_ENV.
+    await assertPublicDestination(parsedUrl);
 
     // 3. Construct authentic test payload
     const testPayload = payload || {
@@ -162,20 +215,47 @@ export async function POST(req: NextRequest) {
       headers['X-Hub-Signature-256'] = `sha256=${signature}`;
     }
 
-    // 5. Perform authentic outbound fetch() with strict 5000ms timeout
+    // 5. Perform authentic outbound fetch() with strict 5000ms timeout.
+    // Redirects are followed manually so every hop is re-validated; a public
+    // URL must not be able to bounce the request into the private network.
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-    let response: Response;
+    let response: Response | undefined;
     try {
-      response = await fetch(parsedUrl.toString(), {
-        method: 'POST',
-        headers,
-        body: payloadString,
-        signal: controller.signal,
-      });
+      let currentUrl = parsedUrl;
+
+      for (let hop = 0; ; hop += 1) {
+        response = await fetch(currentUrl.toString(), {
+          method: 'POST',
+          headers,
+          body: payloadString,
+          signal: controller.signal,
+          redirect: 'manual',
+        });
+
+        const isRedirect = response.status >= 300 && response.status < 400;
+        const location = response.headers.get('location');
+        if (!isRedirect || !location) break;
+
+        if (hop >= MAX_REDIRECTS) {
+          throw new BlockedDestinationError('Webhook destination exceeded the redirect limit');
+        }
+
+        const nextUrl = new URL(location, currentUrl);
+        if (nextUrl.protocol !== 'http:' && nextUrl.protocol !== 'https:') {
+          throw new BlockedDestinationError('Webhook redirect used an unsupported protocol');
+        }
+
+        await assertPublicDestination(nextUrl);
+        currentUrl = nextUrl;
+      }
     } finally {
       clearTimeout(timeoutId);
+    }
+
+    if (!response) {
+      throw new Error('Webhook probe produced no response');
     }
 
     const latencyMs = Math.round(performance.now() - startTime);
@@ -202,6 +282,23 @@ export async function POST(req: NextRequest) {
       });
     }
   } catch (err: unknown) {
+    if (err instanceof BlockedDestinationError) {
+      const latencyMs = Math.round(performance.now() - startTime);
+      return NextResponse.json(
+        {
+          success: false,
+          status: 400,
+          statusText: 'Bad Request',
+          latency_ms: latencyMs,
+          latencyMs,
+          reachable: false,
+          error: 'Invalid Destination',
+          message: err.message,
+        },
+        { status: 400 }
+      );
+    }
+
     const latencyMs = Math.round(performance.now() - startTime);
     const isTimeout =
       err instanceof Error &&
