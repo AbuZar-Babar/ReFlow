@@ -12,7 +12,8 @@ class ConditionEvaluator {
    * Handles:
    *  - Single condition object { field, operator, value }
    *  - Legacy rowFilter { column, value }
-   *  - Compound group { matchType: 'AND'|'OR', conditions: [...] }
+   *  - Compound group { matchMode: 'all'|'any', conditions: [...] } or legacy
+   *    { matchType: 'AND'|'OR', conditions: [...] }
    *  - Array of conditions
    * 
    * @param {object|array|null} filterInput 
@@ -26,7 +27,7 @@ class ConditionEvaluator {
     // Direct compound structure
     if (filterInput.conditions && Array.isArray(filterInput.conditions)) {
       return {
-        matchType: (filterInput.matchType || filterInput.conjunction || 'AND').toUpperCase() === 'OR' ? 'OR' : 'AND',
+        matchType: this._normalizeMatchMode(filterInput),
         rules: filterInput.conditions.map(c => this._normalizeSingleRule(c)).filter(Boolean)
       };
     }
@@ -58,6 +59,26 @@ class ConditionEvaluator {
     }
 
     return { matchType: 'AND', rules: [] };
+  }
+
+  /**
+   * Resolves the compound match mode.
+   * Accepts the shared item-filter contract (`matchMode: 'all'|'any'`) as well as the
+   * legacy `matchType`/`conjunction` names (`'AND'|'OR'`). Match modes are OR only when
+   * explicitly 'any'/'or'; absent or unrecognised values default to AND.
+   *
+   * @param {object} filterInput
+   * @returns {'AND'|'OR'}
+   */
+  static _normalizeMatchMode(filterInput) {
+    const rawMode = filterInput.matchMode !== undefined && filterInput.matchMode !== null
+      ? filterInput.matchMode
+      : (filterInput.matchType !== undefined && filterInput.matchType !== null
+        ? filterInput.matchType
+        : filterInput.conjunction);
+
+    const mode = String(rawMode || 'all').trim().toLowerCase();
+    return (mode === 'any' || mode === 'or') ? 'OR' : 'AND';
   }
 
   static _normalizeSingleRule(rule) {

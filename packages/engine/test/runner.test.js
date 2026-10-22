@@ -821,3 +821,69 @@ test('Adversarial - Daemon restarts cleanly recognize previously downloaded file
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
+test('CloudClient - uploadArtifact returns null instead of fabricating a path when the endpoint is missing', async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'upload-404-'));
+  const testFile = path.join(tmpDir, 'invoice.pdf');
+  fs.writeFileSync(testFile, 'PDF data');
+
+  const mockFetch = async () => ({
+    ok: false,
+    status: 404,
+    statusText: 'Not Found',
+    headers: { get: () => 'application/json' },
+    json: async () => ({ error: 'Not found' }),
+  });
+
+  const client = new CloudClient({
+    baseUrl: 'http://localhost:3000',
+    token: 'rf_live_org_abc_secret0000000000000000',
+    fetch: mockFetch,
+  });
+
+  const res = await client.uploadArtifact('run_404', testFile, { file_name: 'invoice.pdf' });
+  assert.strictEqual(res, null, 'A missing upload endpoint must not yield a fabricated cloud path');
+
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+test('CloudClient - uploadArtifact returns null when the network fails', async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'upload-net-'));
+  const testFile = path.join(tmpDir, 'invoice.pdf');
+  fs.writeFileSync(testFile, 'PDF data');
+
+  const mockFetch = async () => {
+    throw new Error('ECONNREFUSED');
+  };
+
+  const client = new CloudClient({
+    baseUrl: 'http://localhost:3000',
+    token: 'rf_live_org_abc_secret0000000000000000',
+    fetch: mockFetch,
+  });
+
+  const res = await client.uploadArtifact('run_net', testFile, { file_name: 'invoice.pdf' });
+  assert.strictEqual(res, null, 'A network failure must not yield a fabricated cloud path');
+
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+test('RunnerDaemon - stop() settles a pending poll sleep so the loop can exit', async () => {
+  const daemon = new RunnerDaemon({
+    cloudClient: { updateRunStatus: async () => ({}), getPendingRuns: async () => [] },
+    logger: { info: () => {}, warn: () => {}, error: () => {}, success: () => {} },
+  });
+
+  let settled = false;
+  const sleepPromise = daemon._sleep(60000).then(() => { settled = true; });
+
+  await daemon.stop();
+  await Promise.race([
+    sleepPromise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('suspended sleep never settled')), 1000)),
+  ]);
+
+  assert.strictEqual(settled, true);
+  assert.strictEqual(daemon._pollTimer, null);
+});
+
+

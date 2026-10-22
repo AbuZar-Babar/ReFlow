@@ -268,10 +268,15 @@ class CloudClient {
   /**
    * Upload an artifact file to Cloud Storage endpoint
    * POST /api/v1/artifacts/upload (with fallback to POST /api/v1/artifacts)
-   * @param {string} runId 
-   * @param {string} filePath 
+   *
+   * Returns `null` when the cloud cannot confirm storage (404 endpoint missing or network
+   * failure). Callers must then record the artifact as local-only instead of inventing a
+   * storage path that was never written.
+   *
+   * @param {string} runId
+   * @param {string} filePath
    * @param {Object} [metadata]
-   * @returns {Promise<{ cloud_storage_path: string, path?: string, artifact?: any }>}
+   * @returns {Promise<{ cloud_storage_path: string|null, uploaded: boolean, path?: string, artifact?: any }|null>}
    */
   async uploadArtifact(runId, filePath, metadata = {}) {
     if (!runId) throw new Error('uploadArtifact requires runId');
@@ -294,37 +299,46 @@ class CloudClient {
       storage_path: filePath,
     };
 
+    const resolveCloudPath = (res) => res?.cloud_storage_path || res?.path ||
+      res?.artifact?.cloud_storage_path || null;
+
+    let primaryError = null;
     try {
       const res = await this._request('/api/v1/artifacts/upload', {
         method: 'POST',
         body: JSON.stringify(payload),
       });
+      const cloudStoragePath = resolveCloudPath(res);
       return {
-        cloud_storage_path: res?.cloud_storage_path || res?.path || `wf_artifacts/${runId}/${fileName}`,
         ...res,
+        cloud_storage_path: cloudStoragePath,
+        uploaded: Boolean(cloudStoragePath),
       };
     } catch (err) {
-      // If /api/v1/artifacts/upload is not available, try /api/v1/artifacts with file_data
-      try {
-        const fallbackRes = await this._request('/api/v1/artifacts', {
-          method: 'POST',
-          body: JSON.stringify({
-            ...payload,
-            cloud_storage_path: `wf_artifacts/${runId}/${fileName}`,
-          }),
-        });
-        return {
-          cloud_storage_path: `wf_artifacts/${runId}/${fileName}`,
-          artifact: fallbackRes?.artifact || fallbackRes,
-        };
-      } catch (fallbackErr) {
-        if (err.status === 404 || fallbackErr.status === 404 || err.status === 0) {
-          return {
-            cloud_storage_path: `wf_artifacts/${runId}/${fileName}`,
-          };
-        }
-        throw err;
+      primaryError = err;
+    }
+
+    // If /api/v1/artifacts/upload is not available, try /api/v1/artifacts, which accepts
+    // file_data and performs the upload server-side.
+    try {
+      const fallbackRes = await this._request('/api/v1/artifacts', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      const artifact = fallbackRes?.artifact || fallbackRes;
+      const cloudStoragePath = resolveCloudPath(artifact);
+      return {
+        cloud_storage_path: cloudStoragePath,
+        uploaded: Boolean(cloudStoragePath),
+        artifact,
+      };
+    } catch (fallbackErr) {
+      const cloudUnavailable = primaryError?.status === 404 || fallbackErr?.status === 404 ||
+        primaryError?.status === 0 || fallbackErr?.status === 0;
+      if (cloudUnavailable) {
+        return null;
       }
+      throw primaryError;
     }
   }
 

@@ -108,6 +108,7 @@ class RunnerDaemon {
     this.isStoppingCurrentRun = false;
     this.artifactTracker = new ArtifactTracker();
     this._pollTimer = null;
+    this._sleepResolve = null;
     this._heartbeatTimer = null;
   }
 
@@ -178,6 +179,13 @@ class RunnerDaemon {
     if (this._pollTimer) {
       clearTimeout(this._pollTimer);
       this._pollTimer = null;
+    }
+
+    // A pending _sleep() would otherwise never settle, leaving the poll loop suspended forever.
+    if (this._sleepResolve) {
+      const resolveSleep = this._sleepResolve;
+      this._sleepResolve = null;
+      resolveSleep();
     }
 
     if (this.currentRunner && typeof this.currentRunner.stop === 'function') {
@@ -529,19 +537,42 @@ class RunnerDaemon {
       );
       itemsDownloaded = Math.max(itemsDownloaded, newArtifacts.length);
 
-      // Determine final run status
-      const isSuccess = result?.status === 'COMPLETED' || result?.status === 'COMPLETED_WITH_ERRORS' || !result?.error;
+      // Determine final run status.
+      // The cloud API only accepts pending|running|requires_action|completed|failed|cancelled,
+      // so a run with partial failures keeps the contract status 'completed' but must carry a
+      // non-null error summary instead of silently reporting a clean success.
+      const rawStatus = result?.status || null;
+      const failedCount = Number(result?.itemsFailed) || 0;
+      const completedWithErrors = rawStatus === 'COMPLETED_WITH_ERRORS' || (rawStatus === 'COMPLETED' && failedCount > 0);
+      const isSuccess = !result?.error
+        && rawStatus !== 'FAILED'
+        && (rawStatus === 'COMPLETED' || rawStatus === 'COMPLETED_WITH_ERRORS' || rawStatus === null);
       const finalStatus = isSuccess ? 'completed' : 'failed';
+      const errorSummary = result?.error
+        || (completedWithErrors
+          ? `${failedCount > 0 ? failedCount : 'One or more'} step(s) or item(s) failed during execution (runner status: ${rawStatus || 'COMPLETED_WITH_ERRORS'})`
+          : null);
+      const reportedStatus = rawStatus || finalStatus;
 
       await this.cloudClient.updateRunStatus(run.id, finalStatus, {
         items_processed: itemsProcessed,
         items_downloaded: itemsDownloaded,
         completed_at: new Date().toISOString(),
-        error_summary: result?.error || null,
+        error_summary: errorSummary,
       });
 
-      this.logger.success(`Run ${run.id} finished with status: ${finalStatus} (${itemsDownloaded} artifact(s) registered)`);
-      return { success: isSuccess, runId: run.id, itemsDownloaded, itemsProcessed };
+      this.logger.success(`Run ${run.id} finished with status: ${reportedStatus} (${itemsDownloaded} artifact(s) registered)`);
+      if (errorSummary) {
+        this.logger.warn(`Run ${run.id} error summary: ${errorSummary}`);
+      }
+      return {
+        success: isSuccess && !completedWithErrors,
+        status: reportedStatus,
+        error: errorSummary,
+        runId: run.id,
+        itemsDownloaded,
+        itemsProcessed,
+      };
     } catch (err) {
       if (hitlInterval) {
         clearInterval(hitlInterval);
@@ -754,8 +785,12 @@ class RunnerDaemon {
               file_size_bytes: sizeBytes,
               sha256_hash: hash,
             });
-            cloudStoragePath = uploadRes?.cloud_storage_path || uploadRes?.path || `wf_artifacts/${runId}/${fileName}`;
-            this.logger.success(`[Hybrid Storage] Uploaded to cloud storage: ${cloudStoragePath}`);
+            cloudStoragePath = uploadRes?.cloud_storage_path || null;
+            if (cloudStoragePath) {
+              this.logger.success(`[Hybrid Storage] Uploaded to cloud storage: ${cloudStoragePath}`);
+            } else {
+              this.logger.warn(`[Hybrid Storage] Cloud storage unavailable for ${fileName}. Registering as local artifact.`);
+            }
           } catch (uploadErr) {
             this.logger.warn(`[Hybrid Storage] Cloud upload failed: ${uploadErr.message}. Registering as local artifact.`);
           }
@@ -827,8 +862,12 @@ class RunnerDaemon {
               file_size_bytes: artifactResult.sizeBytes,
               sha256_hash: artifactResult.hash,
             });
-            cloudStoragePath = uploadRes?.cloud_storage_path || uploadRes?.path || `wf_artifacts/${runId}/${artifactResult.fileName}`;
-            this.logger.success(`[Hybrid Storage] Uploaded to cloud storage: ${cloudStoragePath}`);
+            cloudStoragePath = uploadRes?.cloud_storage_path || null;
+            if (cloudStoragePath) {
+              this.logger.success(`[Hybrid Storage] Uploaded to cloud storage: ${cloudStoragePath}`);
+            } else {
+              this.logger.warn(`[Hybrid Storage] Cloud storage unavailable for ${artifactResult.fileName}. Registering as local artifact.`);
+            }
           } catch (uploadErr) {
             this.logger.warn(`[Hybrid Storage] Cloud upload failed: ${uploadErr.message}. Registering as local artifact.`);
           }
@@ -884,7 +923,12 @@ class RunnerDaemon {
 
   _sleep(ms) {
     return new Promise(resolve => {
-      this._pollTimer = setTimeout(resolve, ms);
+      this._sleepResolve = resolve;
+      this._pollTimer = setTimeout(() => {
+        this._pollTimer = null;
+        this._sleepResolve = null;
+        resolve();
+      }, ms);
     });
   }
 }
