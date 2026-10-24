@@ -208,6 +208,19 @@ class LoopStateCoordinator {
     }
   }
 
+  persistManifest(manifest) {
+    if (!manifest) return;
+    try {
+      if (!fs.existsSync(this.runsDir)) fs.mkdirSync(this.runsDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(this.runsDir, 'manifest.json'),
+        JSON.stringify(manifest, null, 2)
+      );
+    } catch (err) {
+      logger.warn(`[LoopStateCoordinator] Could not write manifest: ${err.message}`);
+    }
+  }
+
   loadLoopCheckpoint(workflow) {
     if (!this.resumeFromCheckpoint) return null;
 

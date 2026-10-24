@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Play, 
   X, 
@@ -343,7 +343,10 @@ export function ExecutionPreflightModal({
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Repeating step selector state
+  // Simple-loop configuration state (anchor, start, end)
+  const [anchorStepIndex, setAnchorStepIndex] = useState<number>(0);
+  const [startStepIndex, setStartStepIndex] = useState<number>(0);
+  const [endStepIndex, setEndStepIndex] = useState<number>(0);
   const [loopStepIndex, setLoopStepIndex] = useState<number>(0);
   const [autoDetectedIndex, setAutoDetectedIndex] = useState<number>(0);
 
@@ -383,10 +386,19 @@ export function ExecutionPreflightModal({
         setExecMode('loop');
       }
 
-      const savedLoopIdx = loopSignals.loopStepIndex ?? (workflow as any).loopStepIndex;
+      const savedLoop = loopSignals.loop;
+      const savedLoopIdx = savedLoop?.anchorStepIndex ?? loopSignals.loopStepIndex ?? (workflow as any).loopStepIndex;
       const bestCandidate = detectLoopCandidate(steps, savedLoopIdx);
       setAutoDetectedIndex(bestCandidate);
-      setLoopStepIndex(bestCandidate);
+
+      const anchor = savedLoop?.anchorStepIndex ?? bestCandidate;
+      const start = savedLoop?.startStepIndex ?? anchor;
+      const end = savedLoop?.endStepIndex ?? (steps.length > 0 ? steps.length - 1 : start);
+
+      setAnchorStepIndex(anchor);
+      setStartStepIndex(start);
+      setEndStepIndex(end);
+      setLoopStepIndex(anchor);
 
       const cols = extractWorkflowColumns(workflow);
       setAvailableColumns(cols);
@@ -660,7 +672,20 @@ export function ExecutionPreflightModal({
     }
   };
 
+  let loopValidationError: string | null = null;
+  if (execMode === 'loop' && steps.length > 0) {
+    if (startStepIndex > endStepIndex) {
+      loopValidationError = `Start step (#${startStepIndex + 1}) cannot be after end step (#${endStepIndex + 1}).`;
+    } else if (anchorStepIndex < startStepIndex || anchorStepIndex > endStepIndex) {
+      loopValidationError = `Collection anchor step (#${anchorStepIndex + 1}) must be inside the loop range [Step #${startStepIndex + 1}..#${endStepIndex + 1}].`;
+    }
+  }
+
   const handleLaunch = async () => {
+    if (execMode === 'loop' && loopValidationError) {
+      setError(loopValidationError);
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -755,7 +780,14 @@ export function ExecutionPreflightModal({
           total_items_discovered: itemsLimit || 0,
           mode: execMode,
           isLoop: execMode === 'loop',
-          loopStepIndex: execMode === 'loop' ? loopStepIndex : null,
+          loopStepIndex: execMode === 'loop' ? anchorStepIndex : null,
+          loop: execMode === 'loop' ? {
+            enabled: true,
+            anchorStepIndex,
+            startStepIndex,
+            endStepIndex,
+            maxItems: itemsLimit > 0 ? itemsLimit : null
+          } : { enabled: false },
           loopLimit: execMode === 'loop' && itemsLimit > 0 ? itemsLimit : null,
           itemFilter: constructedFilter,
         })
@@ -884,26 +916,32 @@ export function ExecutionPreflightModal({
           {/* Loop Configuration (if loop selected) */}
           {execMode === 'loop' && (
             <div className="space-y-4 animate-in fade-in duration-150">
-              {/* Repeating Step Selector */}
+              {/* Anchor Step Selector */}
               <div className="space-y-1.5 p-3.5 rounded-xl border border-slate-800 bg-slate-950/40">
                 <div className="flex items-center justify-between">
-                  <label htmlFor="selectLoopStep" className="block text-xs font-semibold text-slate-300">
-                    Repeating Step (Loop Target)
+                  <label htmlFor="selectAnchorStep" className="block text-xs font-semibold text-slate-300">
+                    Collection Anchor Step (Identifies Rows / Items)
                   </label>
                   <span className="text-[11px] text-cyan-400 font-mono">
-                    Step #{loopStepIndex + 1}
+                    Step #{anchorStepIndex + 1}
                   </span>
                 </div>
                 {steps.length > 0 ? (
                   <select
-                    id="selectLoopStep"
-                    value={loopStepIndex}
-                    onChange={(e) => setLoopStepIndex(parseInt(e.target.value, 10))}
+                    id="selectAnchorStep"
+                    value={anchorStepIndex}
+                    onChange={(e) => {
+                      const idx = parseInt(e.target.value, 10);
+                      setAnchorStepIndex(idx);
+                      setLoopStepIndex(idx);
+                      if (idx < startStepIndex) setStartStepIndex(idx);
+                      if (idx > endStepIndex) setEndStepIndex(idx);
+                    }}
                     className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 transition cursor-pointer"
                   >
                     {steps.map((step: any, idx: number) => (
                       <option key={idx} value={idx}>
-                        {formatStepLabel(step, idx)} {idx === autoDetectedIndex ? '(Auto-detected Loop Target)' : ''}
+                        {formatStepLabel(step, idx)} {idx === autoDetectedIndex ? '(Auto-detected Collection Anchor)' : ''}
                       </option>
                     ))}
                   </select>
@@ -911,8 +949,87 @@ export function ExecutionPreflightModal({
                   <p className="text-xs text-slate-500 italic">No recorded steps found in this workflow.</p>
                 )}
                 <p className="text-[11px] text-slate-400">
-                  Select the repeating action that iterates over items or table rows.
+                  Identifies the collection (table, list, cards) to iterate over.
                 </p>
+              </div>
+
+              {/* Loop Step Range (Start & End) */}
+              <div className="space-y-3 p-3.5 rounded-xl border border-slate-800 bg-slate-950/40">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-slate-300">
+                    Loop Range (Steps Repeated per Item)
+                  </label>
+                  <span className="text-[11px] text-cyan-400 font-mono">
+                    Steps #{startStepIndex + 1}..#{endStepIndex + 1} ({Math.max(0, endStepIndex - startStepIndex + 1)} step{endStepIndex === startStepIndex ? '' : 's'})
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="selectStartStep" className="block text-[11px] text-slate-400 mb-1">
+                      Start Step (Inclusive)
+                    </label>
+                    <select
+                      id="selectStartStep"
+                      value={startStepIndex}
+                      onChange={(e) => setStartStepIndex(parseInt(e.target.value, 10))}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500 transition cursor-pointer"
+                    >
+                      {steps.map((step: any, idx: number) => (
+                        <option key={idx} value={idx}>
+                          #{idx + 1}: {formatStepLabel(step, idx)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="selectEndStep" className="block text-[11px] text-slate-400 mb-1">
+                      End Step (Inclusive)
+                    </label>
+                    <select
+                      id="selectEndStep"
+                      value={endStepIndex}
+                      onChange={(e) => setEndStepIndex(parseInt(e.target.value, 10))}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500 transition cursor-pointer"
+                    >
+                      {steps.map((step: any, idx: number) => (
+                        <option key={idx} value={idx}>
+                          #{idx + 1}: {formatStepLabel(step, idx)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Validation Error if any */}
+                {loopValidationError && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
+                    <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+                    <span>{loopValidationError}</span>
+                  </div>
+                )}
+
+                {/* Execution Plan Flow */}
+                <div className="grid grid-cols-3 gap-2 pt-1 text-[11px]">
+                  <div className="p-2 rounded-lg bg-slate-900/80 border border-slate-800/80">
+                    <div className="font-semibold text-slate-300">Setup (Once)</div>
+                    <div className="text-slate-400 mt-0.5">
+                      {startStepIndex > 0 ? `Steps 1..${startStepIndex}` : 'None'}
+                    </div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-cyan-950/30 border border-cyan-800/40">
+                    <div className="font-semibold text-cyan-300">Loop (Per Item)</div>
+                    <div className="text-cyan-400 mt-0.5">
+                      Steps {startStepIndex + 1}..{endStepIndex + 1}
+                    </div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-slate-900/80 border border-slate-800/80">
+                    <div className="font-semibold text-slate-300">Teardown (Once)</div>
+                    <div className="text-slate-400 mt-0.5">
+                      {endStepIndex < steps.length - 1 ? `Steps ${endStepIndex + 2}..${steps.length}` : 'None'}
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Batch Iteration Limits */}
@@ -1354,7 +1471,7 @@ export function ExecutionPreflightModal({
           </button>
           <button
             type="button"
-            disabled={submitting}
+            disabled={submitting || Boolean(execMode === 'loop' && loopValidationError)}
             onClick={handleLaunch}
             className="flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 text-xs font-bold shadow-lg shadow-cyan-500/20 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >

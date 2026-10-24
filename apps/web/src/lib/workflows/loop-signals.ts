@@ -21,10 +21,19 @@
 
 export type LoopMode = 'loop' | 'single';
 
+export interface LoopConfig {
+  enabled: boolean;
+  anchorStepIndex: number;
+  startStepIndex: number;
+  endStepIndex: number;
+  maxItems?: number | null;
+}
+
 export interface LoopSignals {
   isLoop: boolean;
   mode: LoopMode;
   loopStepIndex: number | null;
+  loop?: LoopConfig | null;
 }
 
 /** Step `type`/`action` values that are always recorded on the loop target. */
@@ -73,7 +82,46 @@ function asIndex(value: unknown, stepCount: number): number | null {
 }
 
 /**
- * Derives `{ isLoop, mode, loopStepIndex }` from a workflow definition and its
+ * Validates a LoopConfig against workflow step bounds and business constraints.
+ */
+export function validateLoopConfig(loopConfig: unknown, stepCount: number): { valid: boolean; error: string | null } {
+  if (!loopConfig || typeof loopConfig !== 'object') {
+    return { valid: false, error: 'Loop configuration must be an object' };
+  }
+  const config = loopConfig as Record<string, unknown>;
+  if (config.enabled === false) {
+    return { valid: true, error: null };
+  }
+  if (config.nestedLoops && Array.isArray(config.nestedLoops) && config.nestedLoops.length > 0) {
+    return { valid: false, error: 'Nested loops and multiple loop ranges are unsupported in v1.0' };
+  }
+  if (typeof stepCount !== 'number' || stepCount <= 0) {
+    return { valid: false, error: 'Workflow must have at least one step for loop configuration' };
+  }
+  const start = config.startStepIndex;
+  const end = config.endStepIndex;
+  const anchor = config.anchorStepIndex;
+
+  if (typeof start !== 'number' || !Number.isInteger(start) || start < 0 || start >= stepCount) {
+    return { valid: false, error: `Invalid startStepIndex ${start}: out of bounds (must be a valid step between 0 and ${stepCount - 1})` };
+  }
+  if (typeof end !== 'number' || !Number.isInteger(end) || end < 0 || end >= stepCount) {
+    return { valid: false, error: `Invalid endStepIndex ${end}: out of bounds (must be a valid step between 0 and ${stepCount - 1})` };
+  }
+  if (start > end) {
+    return { valid: false, error: `startStepIndex (${start}) cannot be greater than endStepIndex (${end})` };
+  }
+  if (typeof anchor !== 'number' || !Number.isInteger(anchor) || anchor < 0 || anchor >= stepCount) {
+    return { valid: false, error: `Invalid anchorStepIndex ${anchor}: out of bounds (must be a valid step between 0 and ${stepCount - 1})` };
+  }
+  if (anchor < start || anchor > end) {
+    return { valid: false, error: `anchorStepIndex (${anchor}) must lie within the selected loop range [${start}..${end}] in v1.0` };
+  }
+  return { valid: true, error: null };
+}
+
+/**
+ * Derives `{ isLoop, mode, loopStepIndex, loop }` from a workflow definition and its
  * steps. Never throws; unknown/malformed input degrades to `'single'`.
  */
 export function deriveLoopSignals(definition: unknown, stepsInput?: unknown): LoopSignals {
@@ -89,6 +137,52 @@ export function deriveLoopSignals(definition: unknown, stepsInput?: unknown): Lo
         ? (def.actions as unknown[])
         : [];
 
+  const stepCount = steps.length;
+
+  // Check explicit unified loop object
+  const explicitLoop = (def.loop && typeof def.loop === 'object')
+    ? def.loop as Record<string, unknown>
+    : (metadata.loop && typeof metadata.loop === 'object' ? metadata.loop as Record<string, unknown> : null);
+
+  if (explicitLoop) {
+    if (explicitLoop.enabled === false) {
+      return {
+        isLoop: false,
+        mode: 'single',
+        loopStepIndex: null,
+        loop: {
+          enabled: false,
+          anchorStepIndex: 0,
+          startStepIndex: 0,
+          endStepIndex: 0,
+          maxItems: null
+        }
+      };
+    }
+
+    const anchorIdx = asIndex(explicitLoop.anchorStepIndex ?? explicitLoop.loopStepIndex, stepCount) ?? 0;
+    const startIdx = asIndex(explicitLoop.startStepIndex, stepCount) ?? anchorIdx;
+    const endIdx = asIndex(explicitLoop.endStepIndex, stepCount) ?? (stepCount > 0 ? stepCount - 1 : startIdx);
+    const maxItems = typeof explicitLoop.maxItems === 'number' && Number.isInteger(explicitLoop.maxItems) && explicitLoop.maxItems > 0
+      ? explicitLoop.maxItems
+      : (typeof explicitLoop.loopLimit === 'number' && Number.isInteger(explicitLoop.loopLimit) && explicitLoop.loopLimit > 0 ? explicitLoop.loopLimit : null);
+
+    const loopConfig: LoopConfig = {
+      enabled: true,
+      anchorStepIndex: anchorIdx,
+      startStepIndex: startIdx,
+      endStepIndex: Math.max(startIdx, endIdx),
+      maxItems
+    };
+
+    return {
+      isLoop: true,
+      mode: 'loop',
+      loopStepIndex: anchorIdx,
+      loop: loopConfig
+    };
+  }
+
   const flaggedIndex = steps.findIndex(isLoopFlaggedStep);
   const extractionIndex = steps.findIndex(isExtractionStep);
 
@@ -101,17 +195,30 @@ export function deriveLoopSignals(definition: unknown, stepsInput?: unknown): Lo
     extractionIndex >= 0
   );
 
-  const stepCount = steps.length;
   const loopStepIndex =
     asIndex(def.loopStepIndex, stepCount) ??
     asIndex(metadata.loopStepIndex, stepCount) ??
     asIndex(settings.loopStepIndex, stepCount) ??
     (flaggedIndex >= 0 ? flaggedIndex : extractionIndex >= 0 ? extractionIndex : null);
 
+  let derivedLoop: LoopConfig | null = null;
+  if (isLoop && stepCount > 0) {
+    const anchor = loopStepIndex ?? 0;
+    const maxItems = asIndex(def.loopLimit, 999999) ?? asIndex(metadata.loopLimit, 999999) ?? null;
+    derivedLoop = {
+      enabled: true,
+      anchorStepIndex: anchor,
+      startStepIndex: anchor,
+      endStepIndex: stepCount - 1,
+      maxItems
+    };
+  }
+
   return {
     isLoop,
     mode: isLoop ? 'loop' : 'single',
     loopStepIndex: isLoop ? loopStepIndex : null,
+    loop: derivedLoop
   };
 }
 
@@ -138,6 +245,11 @@ export function normalizeLoopFlags(definition: unknown): Record<string, unknown>
     def.isLoop = true;
     def.mode = 'loop';
     if (signals.loopStepIndex !== null) def.loopStepIndex = signals.loopStepIndex;
+    if (signals.loop) def.loop = signals.loop;
+  } else if (signals.loop && !signals.loop.enabled) {
+    def.isLoop = false;
+    def.mode = 'single';
+    def.loop = signals.loop;
   }
 
   if (metadata) def.metadata = metadata;

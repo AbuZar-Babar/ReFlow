@@ -781,27 +781,29 @@ export default function WorkflowsPage() {
       )}
 
       {/* Execution Preflight Modal */}
-      <ExecutionPreflightModal
-        isOpen={preflightWorkflow !== null}
-        onClose={() => setPreflightWorkflow(null)}
-        workflow={preflightWorkflow}
-        onRunDispatched={(dispatchedRun) => {
-          setActiveRuns((prev) => [
-            {
-              id: dispatchedRun.id,
-              org_id: orgId || '',
-              workflow_id: dispatchedRun.workflow_id || '',
-              status: (dispatchedRun.status as RunStatus) || 'pending',
-              total_items_discovered: dispatchedRun.total_items_discovered || 0,
-              items_processed: dispatchedRun.items_processed || 0,
-              items_downloaded: dispatchedRun.items_downloaded || 0,
-              started_at: dispatchedRun.started_at || new Date().toISOString(),
-            },
-            ...prev,
-          ]);
-          void loadData();
-        }}
-      />
+      {preflightWorkflow && (
+        <ExecutionPreflightModal
+          isOpen={preflightWorkflow !== null}
+          onClose={() => setPreflightWorkflow(null)}
+          workflow={preflightWorkflow}
+          onRunDispatched={(dispatchedRun) => {
+            setActiveRuns((prev) => [
+              {
+                id: dispatchedRun.id,
+                org_id: orgId || '',
+                workflow_id: dispatchedRun.workflow_id || '',
+                status: (dispatchedRun.status as RunStatus) || 'pending',
+                total_items_discovered: dispatchedRun.total_items_discovered || 0,
+                items_processed: dispatchedRun.items_processed || 0,
+                items_downloaded: dispatchedRun.items_downloaded || 0,
+                started_at: dispatchedRun.started_at || new Date().toISOString(),
+              },
+              ...prev,
+            ]);
+            void loadData();
+          }}
+        />
+      )}
 
       {/* Create Portal Modal */}
       {orgId && (

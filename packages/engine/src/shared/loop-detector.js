@@ -383,13 +383,211 @@ class LoopDetector {
   }
 
   /**
-   * Partitions a recording's step sequence into:
-   * 1. setupSteps: steps before the repeating interaction (e.g. login, navigate, open tab)
-   * 2. loopSteps: steps to be repeated per collection item
-   * 3. teardownSteps: optional cleanup steps at the end of the workflow
+   * Validates a loop configuration against the workflow's step count.
+   * Enforces: one loop, inclusive range, anchor in range, valid bounds, no nested loops.
+   *
+   * @param {object} loopConfig - { enabled, anchorStepIndex, startStepIndex, endStepIndex, maxItems }
+   * @param {number} stepCount - Total number of steps in the workflow
+   * @returns {{ valid: boolean, error: string|null }}
    */
-  static partitionWorkflow(steps, loopStepIndex) {
-    if (!Array.isArray(steps) || loopStepIndex < 0 || loopStepIndex >= steps.length) {
+  static validateLoopConfig(loopConfig, stepCount = 0) {
+    if (!loopConfig || typeof loopConfig !== 'object') {
+      return { valid: false, error: 'Loop configuration must be an object' };
+    }
+
+    if (loopConfig.enabled === false) {
+      return { valid: true, error: null };
+    }
+
+    if (loopConfig.nestedLoops && Array.isArray(loopConfig.nestedLoops) && loopConfig.nestedLoops.length > 0) {
+      return { valid: false, error: 'Nested loops and multiple loop ranges are unsupported in v1.0' };
+    }
+
+    if (typeof stepCount !== 'number' || stepCount <= 0) {
+      return { valid: false, error: 'Workflow must have at least one step for loop configuration' };
+    }
+
+    const { startStepIndex, endStepIndex, anchorStepIndex, maxItems } = loopConfig;
+
+    if (!Number.isInteger(startStepIndex) || startStepIndex < 0 || startStepIndex >= stepCount) {
+      return { valid: false, error: `Invalid startStepIndex ${startStepIndex}: out of bounds (must be a valid step between 0 and ${stepCount - 1})` };
+    }
+
+    if (!Number.isInteger(endStepIndex) || endStepIndex < 0 || endStepIndex >= stepCount) {
+      return { valid: false, error: `Invalid endStepIndex ${endStepIndex}: out of bounds (must be a valid step between 0 and ${stepCount - 1})` };
+    }
+
+    if (startStepIndex > endStepIndex) {
+      return { valid: false, error: `startStepIndex (${startStepIndex}) cannot be greater than endStepIndex (${endStepIndex})` };
+    }
+
+    if (!Number.isInteger(anchorStepIndex) || anchorStepIndex < 0 || anchorStepIndex >= stepCount) {
+      return { valid: false, error: `Invalid anchorStepIndex ${anchorStepIndex}: out of bounds (must be a valid step between 0 and ${stepCount - 1})` };
+    }
+
+    if (anchorStepIndex < startStepIndex || anchorStepIndex > endStepIndex) {
+      return { valid: false, error: `anchorStepIndex (${anchorStepIndex}) must lie within the selected loop range [${startStepIndex}..${endStepIndex}] in v1.0` };
+    }
+
+    if (maxItems !== undefined && maxItems !== null) {
+      if (!Number.isInteger(maxItems) || maxItems <= 0) {
+        return { valid: false, error: 'maxItems must be a positive integer or null' };
+      }
+    }
+
+    return { valid: true, error: null };
+  }
+
+  /**
+   * Derives a unified LoopConfig { enabled, anchorStepIndex, startStepIndex, endStepIndex, maxItems }
+   * from any workflow definition, preserving backward compatibility.
+   *
+   * @param {object} definition - Stored workflow or workflow_definition
+   * @param {Array<object>} stepsInput - Optional steps array
+   * @returns {{ enabled: boolean, anchorStepIndex: number|null, startStepIndex: number|null, endStepIndex: number|null, maxItems: number|null }}
+   */
+  static deriveLoopConfig(definition = {}, stepsInput) {
+    const def = (definition && typeof definition === 'object') ? definition : {};
+    const metadata = (def.metadata && typeof def.metadata === 'object') ? def.metadata : {};
+    const settings = (def.settings && typeof def.settings === 'object') ? def.settings : {};
+
+    const steps = Array.isArray(stepsInput)
+      ? stepsInput
+      : Array.isArray(def.steps)
+        ? def.steps
+        : Array.isArray(def.actions)
+          ? def.actions
+          : [];
+
+    const stepCount = steps.length;
+
+    // Check if explicitly configured via unified `loop` object
+    const explicitLoop = (def.loop && typeof def.loop === 'object') ? def.loop : (metadata.loop && typeof metadata.loop === 'object' ? metadata.loop : null);
+    if (explicitLoop) {
+      if (explicitLoop.enabled === false) {
+        return {
+          enabled: false,
+          anchorStepIndex: null,
+          startStepIndex: null,
+          endStepIndex: null,
+          maxItems: null
+        };
+      }
+      const anchorIdx = Number.isInteger(explicitLoop.anchorStepIndex)
+        ? explicitLoop.anchorStepIndex
+        : (Number.isInteger(explicitLoop.loopStepIndex) ? explicitLoop.loopStepIndex : null);
+      const startIdx = Number.isInteger(explicitLoop.startStepIndex)
+        ? explicitLoop.startStepIndex
+        : anchorIdx;
+      const endIdx = Number.isInteger(explicitLoop.endStepIndex)
+        ? explicitLoop.endStepIndex
+        : (stepCount > 0 ? stepCount - 1 : null);
+      const maxItems = Number.isInteger(explicitLoop.maxItems) && explicitLoop.maxItems > 0
+        ? explicitLoop.maxItems
+        : (Number.isInteger(explicitLoop.loopLimit) && explicitLoop.loopLimit > 0 ? explicitLoop.loopLimit : null);
+
+      if (anchorIdx !== null && startIdx !== null && endIdx !== null) {
+        return {
+          enabled: explicitLoop.enabled !== false,
+          anchorStepIndex: anchorIdx,
+          startStepIndex: startIdx,
+          endStepIndex: endIdx,
+          maxItems
+        };
+      }
+    }
+
+    // Check explicit loop: false
+    if (def.isLoop === false || metadata.isLoop === false || def.mode === 'single' || metadata.mode === 'single') {
+      return {
+        enabled: false,
+        anchorStepIndex: null,
+        startStepIndex: null,
+        endStepIndex: null,
+        maxItems: null
+      };
+    }
+
+    // Derive from legacy or step signals
+    const flaggedIdx = steps.findIndex(s => s && (s.role === 'LOOP' || s.isLoop === true || s.isLoopCandidate === true || s.loopMode === 'sequential_iteration'));
+    const extractionIdx = steps.findIndex(s => s && ['EXTRACT_TABLE', 'EXTRACT_TEXT', 'LOOP_START', 'EXTRACT'].includes(String(s.type || s.action || '').toUpperCase()));
+
+    const isLoop = Boolean(
+      def.isLoop === true ||
+      metadata.isLoop === true ||
+      String(def.mode || '').toLowerCase() === 'loop' ||
+      String(metadata.mode || '').toLowerCase() === 'loop' ||
+      flaggedIdx >= 0 ||
+      extractionIdx >= 0
+    );
+
+    if (!isLoop || stepCount === 0) {
+      return {
+        enabled: false,
+        anchorStepIndex: null,
+        startStepIndex: null,
+        endStepIndex: null,
+        maxItems: null
+      };
+    }
+
+    let anchorIdx = Number.isInteger(def.loopStepIndex)
+      ? def.loopStepIndex
+      : (Number.isInteger(metadata.loopStepIndex)
+          ? metadata.loopStepIndex
+          : (Number.isInteger(settings.loopStepIndex)
+              ? settings.loopStepIndex
+              : (flaggedIdx >= 0 ? flaggedIdx : (extractionIdx >= 0 ? extractionIdx : 0))));
+
+    if (anchorIdx < 0 || anchorIdx >= stepCount) {
+      anchorIdx = flaggedIdx >= 0 ? flaggedIdx : (extractionIdx >= 0 ? extractionIdx : 0);
+    }
+
+    const startIdx = Number.isInteger(def.startStepIndex) && def.startStepIndex >= 0 && def.startStepIndex < stepCount
+      ? def.startStepIndex
+      : anchorIdx;
+
+    let endIdx = Number.isInteger(def.endStepIndex) && def.endStepIndex >= startIdx && def.endStepIndex < stepCount
+      ? def.endStepIndex
+      : stepCount - 1;
+
+    // Check for explicit teardown steps if endStepIndex was not explicitly set
+    if (!Number.isInteger(def.endStepIndex)) {
+      for (let i = stepCount - 1; i > startIdx; i--) {
+        const s = steps[i];
+        if (s && (s.role === 'TEARDOWN' || s.isTeardown === true)) {
+          endIdx = i - 1;
+        } else {
+          break;
+        }
+      }
+    }
+
+    const maxItems = Number.isInteger(def.loopLimit) && def.loopLimit > 0
+      ? def.loopLimit
+      : (Number.isInteger(metadata.loopLimit) && metadata.loopLimit > 0 ? metadata.loopLimit : null);
+
+    return {
+      enabled: true,
+      anchorStepIndex: anchorIdx,
+      startStepIndex: startIdx,
+      endStepIndex: Math.max(startIdx, endIdx),
+      maxItems
+    };
+  }
+
+  /**
+   * Partitions a recording's step sequence into:
+   * 1. setupSteps: steps before the repeating range (e.g. login, navigate, open tab)
+   * 2. loopSteps: steps to be repeated per collection item (from startIndex to endIndex inclusive)
+   * 3. teardownSteps: steps after the repeating range, executed once upon normal completion
+   *
+   * @param {Array<object>} steps - Workflow steps array
+   * @param {number} startIndex - Start index of the loop range (or anchor index for legacy callers)
+   * @param {number|null} endIndex - Optional end index of the loop range (inclusive)
+   */
+  static partitionWorkflow(steps, startIndex, endIndex = null) {
+    if (!Array.isArray(steps) || startIndex < 0 || startIndex >= steps.length) {
       return {
         setupSteps: steps || [],
         loopSteps: [],
@@ -397,10 +595,21 @@ class LoopDetector {
       };
     }
 
-    const setupSteps = steps.slice(0, loopStepIndex);
-    const loopCandidateSteps = steps.slice(loopStepIndex);
+    const setupSteps = steps.slice(0, startIndex);
 
-    // Look for explicit teardown steps at the end (e.g. logout or global close)
+    if (Number.isInteger(endIndex) && endIndex >= startIndex) {
+      const clampedEnd = Math.min(steps.length - 1, endIndex);
+      const loopSteps = steps.slice(startIndex, clampedEnd + 1);
+      const teardownSteps = steps.slice(clampedEnd + 1);
+      return {
+        setupSteps,
+        loopSteps,
+        teardownSteps
+      };
+    }
+
+    // Legacy fallback when endIndex is not provided
+    const loopCandidateSteps = steps.slice(startIndex);
     let teardownIdx = -1;
     for (let i = loopCandidateSteps.length - 1; i > 0; i--) {
       const s = loopCandidateSteps[i];

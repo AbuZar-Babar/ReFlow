@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRunnerOrUser } from '@/lib/auth/runner-auth';
 import { RunStatus } from '@/lib/types/database';
-import { deriveLoopSignals } from '@/lib/workflows/loop-signals';
+import { deriveLoopSignals, validateLoopConfig } from '@/lib/workflows/loop-signals';
 
 const ALLOWED_TRANSITIONS: Record<RunStatus, RunStatus[]> = {
   pending: ['running', 'cancelled'],
@@ -127,22 +127,34 @@ export async function POST(request: NextRequest) {
     // config in sync with what the engine will actually execute.
     const loopSignals = deriveLoopSignals(currentDef, steps);
 
+    // Validate and normalize loop configuration if provided in body or workflow
+    let loopConfig = body.loop !== undefined ? body.loop : (loopSignals.loop || null);
+    if (loopConfig && loopConfig.enabled !== false) {
+      const validation = validateLoopConfig(loopConfig, steps.length);
+      if (!validation.valid) {
+        return NextResponse.json(
+          { error: validation.error },
+          { status: 400 }
+        );
+      }
+    }
+
     // Determine loop execution mode
     const hasExplicitMode = body.mode !== undefined || body.isLoop !== undefined;
     const isLoopCandidate = loopSignals.isLoop;
     const mode = hasExplicitMode
       ? (body.mode || (body.isLoop ? 'loop' : 'single'))
-      : (isLoopCandidate ? 'loop' : 'single');
+      : (loopConfig?.enabled ? 'loop' : (isLoopCandidate ? 'loop' : 'single'));
     const isLoop = hasExplicitMode
       ? Boolean(body.isLoop ?? (mode === 'loop'))
-      : isLoopCandidate;
+      : (loopConfig ? Boolean(loopConfig.enabled) : isLoopCandidate);
 
     // Determine loop step index
     const hasExplicitLoopStepIndex = body.loopStepIndex !== undefined || body.loop_step_index !== undefined;
     const explicitLoopStepIndex = body.loopStepIndex !== undefined ? body.loopStepIndex : body.loop_step_index;
     const loopStepIndex = hasExplicitLoopStepIndex
       ? (explicitLoopStepIndex !== null ? Number(explicitLoopStepIndex) : null)
-      : loopSignals.loopStepIndex;
+      : (loopConfig?.anchorStepIndex ?? loopSignals.loopStepIndex);
 
     // Determine loop limit
     const hasExplicitLoopLimit = body.loopLimit !== undefined || body.loop_limit !== undefined;
@@ -151,7 +163,9 @@ export async function POST(request: NextRequest) {
       ? (explicitLoopLimit !== null ? Number(explicitLoopLimit) : null)
       : (Number(total_items_discovered) > 0
           ? Number(total_items_discovered)
-          : (currentDef.loopLimit !== undefined && currentDef.loopLimit !== null ? Number(currentDef.loopLimit) : null));
+          : (loopConfig?.maxItems !== undefined && loopConfig?.maxItems !== null
+              ? Number(loopConfig.maxItems)
+              : (currentDef.loopLimit !== undefined && currentDef.loopLimit !== null ? Number(currentDef.loopLimit) : null)));
 
     // Determine item filter
     const hasExplicitItemFilter = body.itemFilter !== undefined || body.item_filter !== undefined;
@@ -198,6 +212,7 @@ export async function POST(request: NextRequest) {
         loopStepIndex,
         loopLimit,
         itemFilter,
+        loop: loopConfig,
       }
     }, { status: 201 });
   } catch (err: unknown) {

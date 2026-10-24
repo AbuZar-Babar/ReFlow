@@ -114,6 +114,11 @@ export function AuthCard({
     setSignInLoading(true);
 
     try {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      if (!supabaseUrl || supabaseUrl.includes('placeholder.supabase.co')) {
+        throw new Error('Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in apps/web/.env.local.');
+      }
+
       const supabase = createClient();
       const { data, error } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
@@ -142,7 +147,11 @@ export function AuthCard({
       }
     } catch (err: unknown) {
       if (err instanceof Error) {
-        setSignInError(err.message);
+        if (err.message.includes('Failed to fetch')) {
+          setSignInError('Unable to connect to Supabase. Please ensure your Supabase instance is reachable and configured in apps/web/.env.local.');
+        } else {
+          setSignInError(err.message);
+        }
       } else {
         setSignInError('An unexpected error occurred. Please check your credentials.');
       }
@@ -177,6 +186,11 @@ export function AuthCard({
     setSignUpLoading(true);
 
     try {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      if (!supabaseUrl || supabaseUrl.includes('placeholder.supabase.co')) {
+        throw new Error('Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in apps/web/.env.local.');
+      }
+
       const supabase = createClient();
       const { data: authData, error } = await supabase.auth.signUp({
         email: cleanEmail,
@@ -220,7 +234,11 @@ export function AuthCard({
       }
     } catch (err: unknown) {
       if (err instanceof Error) {
-        setSignUpError(err.message);
+        if (err.message.includes('Failed to fetch')) {
+          setSignUpError('Unable to connect to Supabase. Please ensure your Supabase instance is reachable and configured in apps/web/.env.local.');
+        } else {
+          setSignUpError(err.message);
+        }
       } else {
         setSignUpError('Signup failed. Please try again.');
       }

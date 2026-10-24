@@ -501,6 +501,7 @@ class RunnerDaemon {
         },
         isLoop: isLoop,
         loopStepIndex: loopStepIndex,
+        loop: run.loop || def.loop || workflow?.loop || null,
         itemFilter: itemFilter,
         rowFilter: rowFilter,
         loopLimit: loopLimit,

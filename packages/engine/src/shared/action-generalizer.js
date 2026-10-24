@@ -6,6 +6,19 @@
  */
 
 class ActionGeneralizer {
+  static _normalizeTarget(target) {
+    if (typeof target === 'string') {
+      return {
+        selectors: { cssPath: target },
+        candidates: [{ strategy: 'css-path', value: target, priority: 5 }]
+      };
+    }
+    if (!target || typeof target !== 'object') {
+      throw new Error('Recorded target is required.');
+    }
+    return target;
+  }
+
   static generalizeAction(action, collection) {
     if (!action || typeof action !== 'object') {
       throw new Error('ActionGeneralizer requires a recorded action.');
@@ -22,7 +35,8 @@ class ActionGeneralizer {
     }
 
     const target = action.target || action;
-    const generalizedTarget = this.generalizeTarget(target, collection);
+    const normalizedTarget = this._normalizeTarget(target);
+    const generalizedTarget = this.generalizeTarget(normalizedTarget, collection);
 
     return {
       ...action,
@@ -31,18 +45,20 @@ class ActionGeneralizer {
     };
   }
 
-  static generalizeActions(actions, collection) {
+  static generalizeActions(actions, collection, anchorOffset = 0) {
     if (!Array.isArray(actions)) {
       throw new Error('ActionGeneralizer requires an action array.');
     }
-    const targetUrl = actions[0]?.url;
+    const safeAnchorOffset = typeof anchorOffset === 'number' && anchorOffset >= 0 && anchorOffset < actions.length ? anchorOffset : 0;
+    const targetUrl = actions[safeAnchorOffset]?.url || actions[0]?.url;
     return actions.map((action, idx) => {
-      // The 1st action in the loop partition is always the item-scoped trigger
-      if (idx === 0) {
+      // The anchor action in the loop partition is always the item-scoped trigger
+      if (idx === safeAnchorOffset) {
         const target = action.target || action;
+        const normalizedTarget = this._normalizeTarget(target);
         return {
           ...action,
-          target: this.generalizeTarget(target, collection),
+          target: this.generalizeTarget(normalizedTarget, collection),
           scope: 'item'
         };
       }
@@ -59,7 +75,10 @@ class ActionGeneralizer {
 
   static isItemRelative(action, collection) {
     if (!action || !collection || !collection.itemTag) return false;
-    const target = action.target || action;
+    let target = action.target || action;
+    if (typeof target === 'string') {
+      target = { selectors: { cssPath: target }, candidates: [{ strategy: 'css-path', value: target }] };
+    }
     const tag = String(collection.itemTag).toLowerCase();
 
     // Check if fingerprint directly matches the item or known child elements
@@ -81,10 +100,8 @@ class ActionGeneralizer {
     });
   }
 
-  static generalizeTarget(target, collection) {
-    if (!target || typeof target !== 'object') {
-      throw new Error('Recorded target is required.');
-    }
+  static generalizeTarget(rawTarget, collection) {
+    const target = this._normalizeTarget(rawTarget);
 
     const candidates = Array.isArray(target.candidates) ? [...target.candidates] : [];
     const cssPath = target.selectors?.cssPath || target.cssPath;
@@ -107,6 +124,20 @@ class ActionGeneralizer {
         priority: Math.max(Number(candidate.priority) || 0, 6),
         scope: 'item'
       });
+    }
+
+    if (generalizedCandidates.length === 0) {
+      // Check if target represents the item itself or lacks specific relative segment
+      const fpTag = String(target.fingerprint?.tagName || '').toLowerCase();
+      const colTag = String(collection.itemTag || '').toLowerCase();
+      if (fpTag === colTag || !candidates.length || candidates.some(c => c.value && c.value.toLowerCase().includes(colTag))) {
+        generalizedCandidates.push({
+          strategy: 'relative-scope',
+          value: ':scope',
+          priority: 6,
+          scope: 'item'
+        });
+      }
     }
 
     return {
