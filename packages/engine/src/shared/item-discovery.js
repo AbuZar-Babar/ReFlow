@@ -305,7 +305,7 @@ class ItemDiscovery {
         let headerColumns = [];
         let rawHeaderLayout = [];
         const isHeaderItem = (el) => {
-          if (!el) return false;
+          if (!el || !(el instanceof Element)) return false;
           const tag = el.tagName.toLowerCase();
           if (tag === 'thead' || el.closest('thead')) return true;
           const cls = (typeof el.className === 'string' ? el.className : '').toLowerCase();
@@ -313,11 +313,33 @@ class ItemDiscovery {
           const ths = el.querySelectorAll('th, [role="columnheader"]');
           const tds = el.querySelectorAll('td, [role="gridcell"]');
           if (ths.length > 0 && tds.length === 0) return true;
-          if (el === el.parentElement?.firstElementChild && (ths.length > 0 || tds.length >= 2)) {
+          const isRow = tag === 'tr' || el.getAttribute('role') === 'row' || (el.classList && el.classList.contains('x-grid-row'));
+          if (isRow && el === el.parentElement?.firstElementChild && (ths.length > 0 || tds.length >= 2)) {
             const hasLinksOrInputs = el.querySelector('a[href], button, input[type="button"], input[type="submit"]');
+            if (hasLinksOrInputs) return false;
+            const rowText = (el.innerText || el.textContent || '').trim();
+            const isDataLike = /\b((?:SI|INV|DR|TX|CM|PO|SO|BILL|REC|ORD)-\d+|\b\d{4,10}\b|\$\s*\d|\d{4}-\d{2}-\d{2})\b/i.test(rowText);
+            if (isDataLike) return false;
+
             const nextRow = el.nextElementSibling;
             const nextRowHasLinks = nextRow?.querySelector('a[href], button, input');
-            if (!hasLinksOrInputs && (nextRowHasLinks || Array.from(tds).some(c => c.querySelector('b, strong, th') || (window.getComputedStyle && (window.getComputedStyle(c).fontWeight >= 600 || window.getComputedStyle(c).fontWeight === 'bold'))))) {
+            const hasBold = Array.from(tds).some(c => {
+              if (c.querySelector('b, strong, th')) return true;
+              try {
+                const fw = window.getComputedStyle ? window.getComputedStyle(c).fontWeight : null;
+                return fw >= 600 || fw === 'bold';
+              } catch { return false; }
+            });
+            const nextTds = nextRow ? Array.from(nextRow.querySelectorAll('td, [role="gridcell"]')) : [];
+            const nextRowHasBold = nextTds.some(c => {
+              if (c.querySelector('b, strong, th')) return true;
+              try {
+                const fw = window.getComputedStyle ? window.getComputedStyle(c).fontWeight : null;
+                return fw >= 600 || fw === 'bold';
+              } catch { return false; }
+            });
+
+            if (nextRowHasLinks || (hasBold && !nextRowHasBold)) {
               return true;
             }
           }
@@ -694,7 +716,9 @@ class ItemDiscovery {
       throw new Error('Invalid discovery result.');
     }
 
-    return page.evaluateHandle(({ collection, index }) => {
+    const expectedItem = (Array.isArray(discovery.items) && discovery.items[index]) ? discovery.items[index] : null;
+
+    return page.evaluateHandle(({ collection, index, expectedItem }) => {
       const visible = (el) => {
         if (!el || !(el instanceof Element)) return false;
         const style = getComputedStyle(el);
@@ -703,7 +727,7 @@ class ItemDiscovery {
           rect.width > 0 && rect.height > 0 && rect.top > -500 && rect.left > -500;
       };
 
-      const normalize = (value) => String(value || '').toLowerCase().replace(/\\s+/g, ' ').trim();
+      const normalize = (value) => String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
 
       const structuralSignature = (el) => {
         const children = Array.from(el.children).slice(0, 12)
@@ -717,6 +741,54 @@ class ItemDiscovery {
         ].join('|');
       };
 
+      const isTableRowCollection = collection.itemTag === 'tr' ||
+        collection.ancestorTag === 'tbody' ||
+        collection.ancestorTag === 'table' ||
+        (Array.isArray(collection.headerColumns) && collection.headerColumns.length > 0);
+
+      const isHeaderItem = (el) => {
+        if (!el || !(el instanceof Element)) return false;
+        if (!isTableRowCollection) return false;
+        const tag = el.tagName.toLowerCase();
+        if (tag === 'thead' || el.closest('thead')) return true;
+        const cls = (typeof el.className === 'string' ? el.className : '').toLowerCase();
+        if (/\b(header|thead|column-header|grid-header|header-row)\b/i.test(cls)) return true;
+        const ths = el.querySelectorAll('th, [role="columnheader"]');
+        const tds = el.querySelectorAll('td, [role="gridcell"]');
+        if (ths.length > 0 && tds.length === 0) return true;
+        const isRow = tag === 'tr' || el.getAttribute('role') === 'row' || (el.classList && el.classList.contains('x-grid-row'));
+        if (isRow && el === el.parentElement?.firstElementChild && (ths.length > 0 || tds.length >= 2)) {
+          const hasLinksOrInputs = el.querySelector('a[href], button, input[type="button"], input[type="submit"]');
+          if (hasLinksOrInputs) return false;
+          const rowText = (el.innerText || el.textContent || '').trim();
+          const isDataLike = /\b((?:SI|INV|DR|TX|CM|PO|SO|BILL|REC|ORD)-\d+|\b\d{4,10}\b|\$\s*\d|\d{4}-\d{2}-\d{2})\b/i.test(rowText);
+          if (isDataLike) return false;
+
+          const nextRow = el.nextElementSibling;
+          const nextRowHasLinks = nextRow?.querySelector('a[href], button, input');
+          const hasBold = Array.from(tds).some(c => {
+            if (c.querySelector('b, strong, th')) return true;
+            try {
+              const fw = window.getComputedStyle ? window.getComputedStyle(c).fontWeight : null;
+              return fw >= 600 || fw === 'bold';
+            } catch { return false; }
+          });
+          const nextTds = nextRow ? Array.from(nextRow.querySelectorAll('td, [role="gridcell"]')) : [];
+          const nextRowHasBold = nextTds.some(c => {
+            if (c.querySelector('b, strong, th')) return true;
+            try {
+              const fw = window.getComputedStyle ? window.getComputedStyle(c).fontWeight : null;
+              return fw >= 600 || fw === 'bold';
+            } catch { return false; }
+          });
+
+          if (nextRowHasLinks || (hasBold && !nextRowHasBold)) {
+            return true;
+          }
+        }
+        return false;
+      };
+
       let ancestors = [];
       if (collection.ancestorSelector) {
         try {
@@ -728,34 +800,81 @@ class ItemDiscovery {
       }
 
       for (const ancestor of ancestors) {
-        // Prefer exact structural matches captured during discovery.
+        // Prefer exact structural matches captured during discovery, excluding header rows.
         const exactItems = Array.from(ancestor.children).filter(child =>
           visible(child) &&
           child.tagName.toLowerCase() === collection.itemTag &&
+          !isHeaderItem(child) &&
           structuralSignature(child) === collection.itemSignature
         );
 
+        let candidate = null;
         if (exactItems.length > index) {
-          try { exactItems[index].scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch {}
-          return exactItems[index];
+          candidate = exactItems[index];
+        } else {
+          // If a portal re-renders a row/card and changes a transient attribute
+          // (role, data-testid, etc.), preserve the collection ordering instead
+          // of losing the item entirely. The item tag remains the hard boundary.
+          const compatibleItems = Array.from(ancestor.children).filter(child =>
+            visible(child) &&
+            child.tagName.toLowerCase() === collection.itemTag &&
+            !isHeaderItem(child)
+          );
+
+          if (compatibleItems.length > index) {
+            candidate = compatibleItems[index];
+          }
         }
 
-        // If a portal re-renders a row/card and changes a transient attribute
-        // (role, data-testid, etc.), preserve the collection ordering instead
-        // of losing the item entirely. The item tag remains the hard boundary.
-        const compatibleItems = Array.from(ancestor.children).filter(child =>
-          visible(child) &&
-          child.tagName.toLowerCase() === collection.itemTag
-        );
+        if (candidate) {
+          // If expectedItem metadata is available, verify that candidate corresponds to it
+          if (expectedItem) {
+            const candidateText = normalize(candidate.innerText || candidate.textContent || '').slice(0, 200);
+            const candidateId = candidate.getAttribute('data-id') ||
+              candidate.getAttribute('data-testid') ||
+              candidate.getAttribute('data-qa') ||
+              candidate.id ||
+              null;
 
-        if (compatibleItems.length > index) {
-          try { compatibleItems[index].scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch {}
-          return compatibleItems[index];
+            // 1. Explicit ID verification
+            if (expectedItem.id) {
+              const matchedById = (
+                candidate.id === expectedItem.id ||
+                candidate.getAttribute('data-id') === expectedItem.id ||
+                candidate.getAttribute('data-testid') === expectedItem.id ||
+                candidate.getAttribute('data-qa') === expectedItem.id
+              );
+              const candidateDirectId = candidate.getAttribute('data-id') || candidate.id;
+              if (candidateDirectId && !matchedById) {
+                return null;
+              }
+            }
+
+            // 2. If expectedItem has extracted key field (e.g. Invoice Number / ID), verify it matches
+            const keyField = expectedItem.fields && (
+              expectedItem.fields['Invoice No'] ||
+              expectedItem.fields['Invoice Number'] ||
+              expectedItem.fields['Invoice #'] ||
+              expectedItem.fields['Invoice'] ||
+              expectedItem.fields['Identifier'] ||
+              expectedItem.fields['ID'] ||
+              expectedItem.fields['Doc No']
+            );
+            if (keyField && typeof keyField === 'string' && keyField.length >= 3) {
+              const normKey = normalize(keyField);
+              if (!candidateText.includes(normKey)) {
+                return null;
+              }
+            }
+          }
+
+          try { candidate.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch {}
+          return candidate;
         }
       }
 
       return null;
-    }, { collection: discovery.collection, index });
+    }, { collection: discovery.collection, index, expectedItem });
   }
 
   /**

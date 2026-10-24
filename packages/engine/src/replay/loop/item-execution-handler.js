@@ -76,6 +76,60 @@ class ItemExecutionHandler {
     this.stateCoordinator = options.stateCoordinator || null;
     this.replayEngine = options.replayEngine || null;
     this.getIsAborted = options.getIsAborted || (() => false);
+    this.downloadTimeoutMs = Number.isInteger(options.downloadTimeoutMs)
+      ? options.downloadTimeoutMs
+      : (Number.isInteger(options.downloadWaitMs) ? options.downloadWaitMs : 12000);
+    this.defaultClickWaitMs = Number.isInteger(options.defaultClickWaitMs)
+      ? options.defaultClickWaitMs
+      : 2500;
+  }
+
+  /**
+   * Determine whether an action can potentially initiate a download.
+   * Recognizes explicit keywords, document/action column context, and unlabeled icon buttons.
+   */
+  static isDownloadPotentialAction(action, targetItem = null) {
+    if (!action) return false;
+    if (action.isDownload === true) return true;
+
+    const fp = action.target?.fingerprint || {};
+    const fpTag = String(fp.tagName || '').toLowerCase();
+    const fpRole = String(fp.role || '').toLowerCase();
+    const text = String(fp.text || action.text || '').trim();
+    const title = String(fp.attributes?.title || action.target?.title || '').trim();
+    const href = String(fp.attributes?.href || action.target?.href || '').trim();
+    const name = String(action.name || action.elementName || '').trim();
+    const candidates = Array.isArray(action.target?.candidates) ? action.target.candidates : [];
+
+    const DL_KEYWORD_REGEX = /download|export|save|pdf|print|file|statement|invoice/i;
+
+    // 1. Text, attribute, or selector keyword match
+    if (
+      candidates.some(c => c && c.value && DL_KEYWORD_REGEX.test(c.value)) ||
+      DL_KEYWORD_REGEX.test(title) ||
+      DL_KEYWORD_REGEX.test(href) ||
+      DL_KEYWORD_REGEX.test(text) ||
+      DL_KEYWORD_REGEX.test(name)
+    ) {
+      return true;
+    }
+
+    // 2. Target table column indicates download or document action
+    const targetCol = targetItem?.targetColumn || action.context?.table?.activeColumn;
+    if (targetCol && /download|export|save|pdf|print|file|statement|invoice|action/i.test(targetCol)) {
+      return true;
+    }
+
+    // 3. Button or link element with unlabeled icon / glyph / empty text (classic icon download button)
+    const isButtonOrLink = fpTag === 'button' || fpTag === 'a' || fpRole === 'button' ||
+      candidates.some(c => c && c.value && /\b(button|btn|icon|action)\b/i.test(c.value));
+    const isUnlabeledOrIcon = !text || text.length <= 3 || /^[▸►▶▼▽▾+\-±›❯»⮞⌄v><\u25B6\u25BC\u25B8\u25BE\u276F\u203A\s]+$/.test(text);
+
+    if (isButtonOrLink && isUnlabeledOrIcon) {
+      return true;
+    }
+
+    return false;
   }
 
   /**
@@ -884,16 +938,10 @@ class ItemExecutionHandler {
           };
 
           if (actionType === 'CLICK' && downloadsDir) {
-            const isDownloadAction = Boolean(
-              action.isDownload === true ||
-              (action.target?.candidates?.some(c => c.value && /download|export|save|pdf|print|file/i.test(c.value))) ||
-              (action.target?.fingerprint?.attributes?.title && /download|export|save|pdf|print/i.test(action.target.fingerprint.attributes.title)) ||
-              (action.target?.fingerprint?.attributes?.href && /download|export|save|file/i.test(action.target.fingerprint.attributes.href)) ||
-              (action.target?.fingerprint?.text && /download|export|save|pdf|print/i.test(action.target.fingerprint.text)) ||
-              (action.name && /download|export|save/i.test(action.name)) ||
-              (action.elementName && /download|export|save/i.test(action.elementName))
-            );
-            const downloadWaitMs = isDownloadAction ? 12000 : 1200;
+            const isDownloadAction = ItemExecutionHandler.isDownloadPotentialAction(action, targetItem);
+            const downloadWaitMs = isDownloadAction
+              ? this.downloadTimeoutMs
+              : this.defaultClickWaitMs;
             const downloaded = await waitForDownload(beforeActionFiles, downloadWaitMs);
             if (downloaded.length) {
               for (const dl of downloaded) {
@@ -1766,8 +1814,11 @@ class ItemExecutionHandler {
         stepResult.status = 'SUCCESS';
         manifest.itemsSucceeded++;
         if ((step.type || 'CLICK') === 'CLICK' && downloadsDir) {
-          const isDl = /download|export|save|pdf|print/i.test(step.target?.fingerprint?.text || step.target?.fingerprint?.attributes?.title || '');
-          const downloaded = await waitForDownload(beforeFiles, isDl ? 12000 : 1200);
+          const isDl = ItemExecutionHandler.isDownloadPotentialAction(step);
+          const downloadWaitMs = isDl
+            ? (this.downloadTimeoutMs || 12000)
+            : (this.defaultClickWaitMs || 2500);
+          const downloaded = await waitForDownload(beforeFiles, downloadWaitMs);
           if (downloaded.length) {
             stepResult.downloadedFiles = downloaded.map(dl => processAndStoreDownload(dl.path, `step_${i + 1}`, `Step #${i + 1}`) || dl);
           }

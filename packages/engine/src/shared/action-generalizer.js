@@ -79,25 +79,81 @@ class ActionGeneralizer {
     if (typeof target === 'string') {
       target = { selectors: { cssPath: target }, candidates: [{ strategy: 'css-path', value: target }] };
     }
-    const tag = String(collection.itemTag).toLowerCase();
 
-    // Check if fingerprint directly matches the item or known child elements
-    const fpTag = String(target.fingerprint?.tagName || '').toLowerCase();
-    if (fpTag === tag) return true;
-    if (tag === 'mat-option' && (fpTag === 'mat-pseudo-checkbox' || target.fingerprint?.role === 'option')) return true;
-    if (tag === 'tr' && (fpTag === 'td' || fpTag === 'th')) return true;
+    // Explicit scope hints take precedence
+    if (action.scope === 'item' || target.scope === 'item' || action.inRow === true || target.inRow === true) {
+      return true;
+    }
+    if (action.scope === 'page' || target.scope === 'page') {
+      return false;
+    }
+
+    // Exclude genuinely shared toolbar, navigation, and header chrome
+    const fp = target.fingerprint || {};
+    const fpRole = String(fp.role || '').toLowerCase();
+    if (['toolbar', 'navigation', 'banner', 'menubar'].includes(fpRole)) {
+      return false;
+    }
+    const fpClasses = Array.isArray(fp.classes) ? fp.classes.join(' ') : String(fp.classes || '');
+    if (/\b(toolbar|top-bar|app-bar|site-header|navbar|pager|pagination)\b/i.test(fpClasses)) {
+      return false;
+    }
 
     const candidates = Array.isArray(target?.candidates) ? [...target.candidates] : [];
-
     const cssPath = target.selectors?.cssPath || target.cssPath || action.selectors?.cssPath || (typeof target === 'string' ? target : null);
     if (cssPath && !candidates.some(c => c && c.value === cssPath)) {
       candidates.push({ strategy: 'css-path', value: cssPath });
     }
 
-    return candidates.some(candidate => {
-      if (!candidate || !candidate.value) return false;
-      return Boolean(this.toRelativeCss(candidate.value, tag));
-    });
+    // If any candidate explicitly references a page toolbar or actions-bar, keep it page-scoped
+    if (candidates.some(c => c?.value && /\b(toolbar|actions-bar|top-bar|navbar)\b/i.test(c.value))) {
+      return false;
+    }
+
+    const tag = String(collection.itemTag).toLowerCase();
+
+    // Check if fingerprint directly matches the item or known child elements
+    const fpTag = String(fp.tagName || '').toLowerCase();
+    if (fpTag === tag) return true;
+    if (tag === 'mat-option' && (fpTag === 'mat-pseudo-checkbox' || fp.role === 'option')) return true;
+    if (tag === 'tr' && (fpTag === 'td' || fpTag === 'th')) return true;
+
+    // Check parent tag evidence in fingerprint
+    const fpParentTag = String(fp.parentTag || '').toLowerCase();
+    if (tag === 'tr' && (fpParentTag === 'td' || fpParentTag === 'th' || fpParentTag === 'tr')) {
+      return true;
+    }
+
+    // Check enclosing row context from recorder sniffing
+    if (action.context?.table?.activeRowValues || action.context?.activeRowValues || action.table?.activeRowValues) {
+      return true;
+    }
+
+    // Check candidates for item-relative CSS paths or XPath ancestry
+    for (const candidate of candidates) {
+      if (!candidate || !candidate.value) continue;
+      if (this.toRelativeCss(candidate.value, tag)) return true;
+      const val = String(candidate.value).trim().toLowerCase();
+      if (candidate.strategy === 'xpath' || val.startsWith('/') || val.startsWith('(')) {
+        if (val.includes(`//${tag}`) || val.includes(`/${tag}/`) || val.includes(`/${tag}[`)) {
+          return true;
+        }
+      }
+    }
+
+    // Check standalone ID selector with row/item index pattern (e.g. #download-btn-row-1)
+    for (const candidate of candidates) {
+      if (!candidate || !candidate.value) continue;
+      const val = String(candidate.value).trim();
+      if (/(?:^|[#._-])(?:row|item|record|tr)[-_]?\d+/i.test(val)) {
+        return true;
+      }
+    }
+    if (fp.id && /(?:^|[#._-])(?:row|item|record|tr)[-_]?\d+/i.test(fp.id)) {
+      return true;
+    }
+
+    return false;
   }
 
   static generalizeTarget(rawTarget, collection) {
@@ -115,15 +171,32 @@ class ActionGeneralizer {
       if (!candidate || !candidate.value) continue;
 
       const relative = this.toRelativeCss(candidate.value, collection.itemTag);
-      if (!relative) continue;
+      if (relative) {
+        generalizedCandidates.push({
+          ...candidate,
+          value: relative,
+          uniqueness: undefined,
+          priority: Math.max(Number(candidate.priority) || 0, 6),
+          scope: 'item'
+        });
+        continue;
+      }
 
-      generalizedCandidates.push({
-        ...candidate,
-        value: relative,
-        uniqueness: undefined,
-        priority: Math.max(Number(candidate.priority) || 0, 6),
-        scope: 'item'
-      });
+      // Generalize standalone ID selectors containing row index patterns (e.g. #download-btn-row-1)
+      const val = String(candidate.value).trim();
+      const idMatch = val.match(/^#([a-zA-Z0-9_-]+)/);
+      if (idMatch) {
+        const fullId = idMatch[1];
+        const baseId = fullId.replace(/(?:[-_]?(?:row|item|record|tr))?[-_]?\d+.*$/i, '');
+        if (baseId && baseId.length >= 3) {
+          generalizedCandidates.push({
+            strategy: 'css-path',
+            value: `[id*="${baseId}"]`,
+            priority: Math.max(Number(candidate.priority) || 0, 5),
+            scope: 'item'
+          });
+        }
+      }
     }
 
     if (generalizedCandidates.length === 0) {
