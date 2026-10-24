@@ -240,6 +240,7 @@ export async function PATCH(request: NextRequest) {
     const items_downloaded = body.items_downloaded !== undefined ? body.items_downloaded : body.itemsDownloaded;
     const error_summary = body.error_summary !== undefined ? body.error_summary : body.errorSummary;
     const completed_at = body.completed_at !== undefined ? body.completed_at : body.completedAt;
+    const total_items_discovered = body.total_items_discovered !== undefined ? body.total_items_discovered : body.totalItemsDiscovered;
 
     if (!runId) {
       return NextResponse.json({ error: 'Missing required field: run_id' }, { status: 400 });
@@ -296,6 +297,9 @@ export async function PATCH(request: NextRequest) {
     }
     if (items_downloaded !== undefined) {
       updatePayload.items_downloaded = Number(items_downloaded);
+    }
+    if (total_items_discovered !== undefined) {
+      updatePayload.total_items_discovered = Number(total_items_discovered);
     }
     if (error_summary !== undefined) {
       updatePayload.error_summary = error_summary;

@@ -427,12 +427,14 @@ class RunnerDaemon {
         loopStepIndex: loopStepIndex,
         isLoop: isLoop,
         mode: mode,
+        steps: steps,
       });
       this.currentRunner = runner;
 
       // Track execution telemetry
       let itemsProcessed = 0;
       let itemsDownloaded = 0;
+      let totalItemsDiscovered = run.total_items_discovered > 0 ? run.total_items_discovered : 0;
       // Progress handler
       const onProgress = async (progress) => {
         if (progress && progress.manifest) {
@@ -440,10 +442,17 @@ class RunnerDaemon {
           const computedProcessed = (m.itemsSucceeded || 0) + (m.itemsFailed || 0) + (m.itemsSkipped || 0);
           itemsProcessed = m.itemsProcessed ?? (computedProcessed > 0 ? computedProcessed : itemsProcessed);
           itemsDownloaded = m.itemsDownloaded ?? (Array.isArray(m.downloadedFiles) ? m.downloadedFiles.length : itemsDownloaded);
+          if (Number.isInteger(m.itemsTotal) && m.itemsTotal > 0) {
+            totalItemsDiscovered = m.itemsTotal;
+          }
+        }
+        if (progress && Number.isInteger(progress.totalItems) && progress.totalItems > 0) {
+          totalItemsDiscovered = progress.totalItems;
         }
         await this.cloudClient.updateRunProgress(run.id, {
           items_processed: itemsProcessed,
           items_downloaded: itemsDownloaded,
+          total_items_discovered: totalItemsDiscovered,
         }).catch(err => {
           this.logger.warn(`Failed to update progress: ${err.message}`);
         });
@@ -499,9 +508,16 @@ class RunnerDaemon {
           actions: steps,
           metadata: metadata,
         },
+        mode: mode,
         isLoop: isLoop,
         loopStepIndex: loopStepIndex,
-        loop: run.loop || def.loop || workflow?.loop || null,
+        loop: run.loop || def.loop || workflow?.loop || (isLoop ? {
+          enabled: true,
+          anchorStepIndex: loopStepIndex,
+          startStepIndex: loopStepIndex,
+          endStepIndex: steps.length > 0 ? steps.length - 1 : 0,
+          maxItems: loopLimit
+        } : null),
         itemFilter: itemFilter,
         rowFilter: rowFilter,
         loopLimit: loopLimit,
@@ -558,6 +574,7 @@ class RunnerDaemon {
       await this.cloudClient.updateRunStatus(run.id, finalStatus, {
         items_processed: itemsProcessed,
         items_downloaded: itemsDownloaded,
+        total_items_discovered: totalItemsDiscovered,
         completed_at: new Date().toISOString(),
         error_summary: errorSummary,
       });

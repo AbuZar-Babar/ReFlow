@@ -223,9 +223,11 @@ export default function RedesignedLandingPage() {
     { label: 'Desktop runner', href: '#desktop-runner' },
     { label: 'Pricing', href: '#pricing' },
   ];
-
   return (
-    <div className="min-h-screen overflow-x-clip bg-[#050505] text-zinc-100 selection:bg-emerald-200/30 selection:text-emerald-50">
+    <div
+      className="min-h-screen overflow-x-clip bg-[#050505] text-zinc-100 selection:bg-emerald-200/30 selection:text-emerald-50"
+      suppressHydrationWarning
+    >
       <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#050505]/90 backdrop-blur-xl">
         <div className="mx-auto flex min-h-[72px] max-w-7xl items-center justify-between gap-5 px-5 sm:px-8 lg:px-12">
           <Link href="/" className="flex items-center gap-2.5 rounded-lg text-lg font-bold tracking-tight text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-200" aria-label="ReFlow home">

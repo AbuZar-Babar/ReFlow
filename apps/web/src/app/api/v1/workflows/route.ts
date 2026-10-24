@@ -34,9 +34,25 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ workflow, workflows: [workflow] });
   }
 
+  const isFull = request.nextUrl.searchParams.get('full') === 'true';
+
+  if (isFull) {
+    const { data: workflows, error } = await supabase
+      .from('wf_workflows')
+      .select('*')
+      .eq('org_id', orgId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ workflows: workflows || [] });
+  }
+
   const { data: workflows, error } = await supabase
     .from('wf_workflows')
-    .select('*')
+    .select('id, org_id, name, portal_url, schema_version, created_by, created_at, updated_at, filter_rules, steps:workflow_definition->steps')
     .eq('org_id', orgId)
     .order('created_at', { ascending: false });
 
@@ -44,7 +60,23 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ workflows: workflows || [] });
+  const sanitizedWorkflows = (workflows || []).map((w: any) => ({
+    id: w.id,
+    org_id: w.org_id,
+    name: w.name,
+    portal_url: w.portal_url,
+    schema_version: w.schema_version,
+    created_by: w.created_by,
+    created_at: w.created_at,
+    updated_at: w.updated_at,
+    filter_rules: w.filter_rules || {},
+    workflow_definition: {
+      steps: Array.isArray(w.steps) ? w.steps : [],
+      start_url: w.portal_url,
+    },
+  }));
+
+  return NextResponse.json({ workflows: sanitizedWorkflows });
 }
 
 export async function POST(request: NextRequest) {

@@ -138,23 +138,10 @@ export default function WorkflowsPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Fetch workflows, active runs, and historical telemetry
-  const loadData = useCallback(async () => {
-    setFetchError(null);
+  // Fetch active runs and latest runs telemetry
+  const loadRuns = useCallback(async () => {
     try {
-      const [wfRes, allRunsRes] = await Promise.all([
-        fetch('/api/v1/workflows'),
-        fetch('/api/v1/runs').catch(() => null),
-      ]);
-
-      if (!wfRes.ok) {
-        const errJson = await wfRes.json().catch(() => ({}));
-        throw new Error(errJson.error || 'Failed to fetch workflows');
-      }
-
-      const wfData = await wfRes.json();
-      setWorkflows(Array.isArray(wfData.workflows) ? wfData.workflows : []);
-
+      const allRunsRes = await fetch('/api/v1/runs').catch(() => null);
       const allRunsData = allRunsRes && allRunsRes.ok ? await allRunsRes.json() : { runs: [] };
       const runsList: ExecutionRun[] = Array.isArray(allRunsData.runs) ? allRunsData.runs : [];
 
@@ -168,12 +155,55 @@ export default function WorkflowsPage() {
         }
       }
       setLatestRuns(latestMap);
+    } catch {
+      // Non-fatal telemetry refresh error
+    }
+  }, []);
+
+  // Fetch workflows catalog
+  const loadWorkflows = useCallback(async () => {
+    setFetchError(null);
+    try {
+      const wfRes = await fetch('/api/v1/workflows');
+      if (!wfRes.ok) {
+        const errJson = await wfRes.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Failed to fetch workflows');
+      }
+
+      const wfData = await wfRes.json();
+      setWorkflows(Array.isArray(wfData.workflows) ? wfData.workflows : []);
     } catch (err: unknown) {
       setFetchError(err instanceof Error ? err.message : 'Failed to load workflow data');
     } finally {
       setIsLoading(false);
       setIsRefreshingLocal(false);
     }
+  }, []);
+
+  // Fetch workflows and telemetry together for initial mount or manual refresh
+  const loadData = useCallback(async () => {
+    await Promise.all([loadWorkflows(), loadRuns()]);
+  }, [loadWorkflows, loadRuns]);
+
+  // Lazy fetch complete workflow when opening execution preflight modal
+  const handleStartRun = useCallback(async (wf: Workflow) => {
+    const def = wf.workflow_definition as Record<string, unknown> | undefined;
+    if (Array.isArray(def?.steps) && def.steps.length > 0) {
+      setPreflightWorkflow(wf);
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/v1/workflows?id=${encodeURIComponent(wf.id)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setPreflightWorkflow(data.workflow || wf);
+        return;
+      }
+    } catch {
+      // Fallback
+    }
+    setPreflightWorkflow(wf);
   }, []);
 
   // Initial load
@@ -191,7 +221,7 @@ export default function WorkflowsPage() {
     };
   }, [loadData]);
 
-  // Real-time Supabase listener on active execution runs
+  // Real-time Supabase listener on active execution runs - only reloads runs telemetry
   useEffect(() => {
     if (!orgId) return;
 
@@ -207,7 +237,7 @@ export default function WorkflowsPage() {
           filter: `org_id=eq.${orgId}`,
         },
         () => {
-          void loadData();
+          void loadRuns();
         }
       )
       .subscribe();
@@ -215,7 +245,7 @@ export default function WorkflowsPage() {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [orgId, loadData]);
+  }, [orgId, loadRuns]);
 
   const handleManualRefresh = async () => {
     setIsRefreshingLocal(true);
@@ -656,7 +686,7 @@ export default function WorkflowsPage() {
                   {/* Left: Prominent [ Run ] Button */}
                   <button
                     type="button"
-                    onClick={() => setPreflightWorkflow(wf)}
+                    onClick={() => void handleStartRun(wf)}
                     className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-cyan-500 hover:bg-cyan-400 text-slate-950 transition-colors cursor-pointer"
                   >
                     <Play className="h-3.5 w-3.5 fill-current" />
@@ -755,7 +785,7 @@ export default function WorkflowsPage() {
                 <div className="flex items-center gap-2 shrink-0 border-t md:border-t-0 border-slate-800/60 pt-3 md:pt-0">
                   <button
                     type="button"
-                    onClick={() => setPreflightWorkflow(wf)}
+                    onClick={() => void handleStartRun(wf)}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-500 hover:bg-cyan-400 text-slate-950 transition-colors cursor-pointer"
                   >
                     <Play className="h-3.5 w-3.5 fill-current" />
@@ -800,7 +830,7 @@ export default function WorkflowsPage() {
               },
               ...prev,
             ]);
-            void loadData();
+            void loadRuns();
           }}
         />
       )}

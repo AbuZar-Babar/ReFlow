@@ -94,15 +94,12 @@ export default function DashboardOverviewPage() {
       setLoadError(null);
       const supabase = createClient();
 
-      // 1. Fetch workflows count & quick workflows list
-      const { data: workflowsData, count: wfCount, error: workflowsError } = await supabase
+      // 1. Fetch workflows count (using head query to avoid downloading large workflow definitions)
+      const { count: wfCount, error: workflowsError } = await supabase
         .from('wf_workflows')
-        .select('*', { count: 'exact' })
-        .eq('org_id', orgId)
-        .order('created_at', { ascending: false });
+        .select('id', { count: 'exact', head: true })
+        .eq('org_id', orgId);
       if (workflowsError) throw workflowsError;
-
-      const workflowsList = (workflowsData || []) as WorkflowModel[];
 
       // 2. Fetch execution runs with exact count and joined workflow name
       const { data: runsData, count: runsCount, error: runsError } = await supabase
@@ -144,7 +141,7 @@ export default function DashboardOverviewPage() {
       const rate = totalR > 0 ? Math.round((completedCount / totalR) * 100) : null;
 
       setStats({
-        totalWorkflows: wfCount ?? workflowsList.length,
+        totalWorkflows: wfCount ?? 0,
         totalRuns: totalR,
         successRate: rate,
         totalInvoices

@@ -230,8 +230,20 @@ class LoopReplayRunner {
       workflow.actions ||
       [];
 
+    const workflowWithOpts = {
+      ...workflow,
+      ...(this.isLoop ? { isLoop: this.isLoop, mode: this.mode, loopStepIndex: this.loopStepIndex, loopLimit: this.loopLimit } : {}),
+      ...(options.isLoop !== undefined ? { isLoop: options.isLoop } : {}),
+      ...(options.mode ? { mode: options.mode } : {}),
+      ...(options.loopStepIndex !== undefined ? { loopStepIndex: options.loopStepIndex } : {}),
+      ...(options.loopLimit !== undefined ? { loopLimit: options.loopLimit } : {}),
+    };
+    if (workflow.loop) workflowWithOpts.loop = workflow.loop;
+    else if (options.loop) workflowWithOpts.loop = options.loop;
+    else if (this.loopConfig?.enabled) workflowWithOpts.loop = this.loopConfig;
+
     const effectiveConfig = LoopDetector.deriveLoopConfig(
-      workflow.loop ? workflow : (options.loop ? { loop: options.loop, ...workflow } : (this.loopConfig?.enabled ? { loop: this.loopConfig, ...workflow } : workflow)),
+      workflowWithOpts,
       steps
     );
     this.loopConfig = effectiveConfig;
@@ -902,8 +914,15 @@ class LoopReplayRunner {
         workflow.actions ||
         [];
 
+      const loopConfigInput = {
+        ...workflow,
+        ...(this.isLoop ? { isLoop: this.isLoop, mode: this.mode, loopStepIndex: this.loopStepIndex, loopLimit: this.loopLimit } : {}),
+      };
+      if (workflow.loop) loopConfigInput.loop = workflow.loop;
+      else if (this.loopConfig?.enabled) loopConfigInput.loop = this.loopConfig;
+
       const loopConfig = LoopDetector.deriveLoopConfig(
-        workflow.loop ? workflow : (this.loopConfig?.enabled ? { loop: this.loopConfig, ...workflow } : workflow),
+        loopConfigInput,
         steps
       );
       this.loopConfig = loopConfig;

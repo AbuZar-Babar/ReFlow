@@ -498,7 +498,10 @@ class LoopDetector {
     }
 
     // Check explicit loop: false
-    if (def.isLoop === false || metadata.isLoop === false || def.mode === 'single' || metadata.mode === 'single') {
+    // Priority: def-level explicit setting takes precedence over recorder metadata defaults
+    const isExplicitlyDisabled = def.isLoop === false || def.mode === 'single' ||
+      (def.isLoop === undefined && def.mode === undefined && (metadata.isLoop === false || metadata.mode === 'single'));
+    if (isExplicitlyDisabled) {
       return {
         enabled: false,
         anchorStepIndex: null,
